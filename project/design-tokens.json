@@ -1,0 +1,29 @@
+{
+  "brand_name": "PitFly",
+  "colors": {
+    "bg": "#F2F2F7",
+    "card": "#FFFFFF",
+    "text": "#000000",
+    "accent": "linear-gradient(135deg, #555555, #000000)",
+    "muted": "#8E8E93",
+    "separator": "#E5E5EA"
+  },
+  "borderRadius": {
+    "card": "16px",
+    "button": "12px"
+  },
+  "fonts": {
+    "family": "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+  },
+  "layout": {
+    "safeArea": {
+      "top": "env(safe-area-inset-top)",
+      "bottom": "env(safe-area-inset-bottom)"
+    },
+    "bottomNav": {
+      "height": "64px",
+      "background": "#FFFFFF",
+      "borderTop": "1px solid #E5E5EA"
+    }
+  }
+}
