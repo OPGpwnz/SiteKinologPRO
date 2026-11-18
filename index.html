@@ -3,20 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Кинолог PRO</title>
+<title>PITFLY</title>
+<meta name="description" content="PITFLY - физическая подготовка и индивидуальные занятия для собак.">
 <style>
 :root {
-  --bg: #F2F2F7; --card: #FFFFFF; --text: #000000; --muted: #8E8E93; --separator: #E5E5EA;
-  --accent: linear-gradient(135deg, #555555, #000000); --accent-solid: #000000; --blue: #007AFF; --red: #FF3B30; --green: #34C759;
-  --instagram: #E1306C; --warning: #FFCC00;
+  --bg: #0A0A0A; --card: #1A1A1A; --surface: #2A2A2E; --text: #F5F7F8; --muted: #A8ADB1; --separator: #34363A;
+  --accent: #BFD6E8; --accent-solid: #BFD6E8; --blue: #BFD6E8; --red: #FF4D4D; --green: #B6FF00;
+  --instagram: #D58AA1; --warning: #D6B86A;
   --border: var(--separator); --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --card-radius: 16px; --button-radius: 12px;
-  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  --bottom-nav-height: 64px; --bottom-nav-background: #FFFFFF; --bottom-nav-border-top: 1px solid #E5E5EA;
+  --card-radius: 3px; --button-radius: 2px;
+  --font-family: Manrope, "Arial Narrow", Impact, -apple-system, BlinkMacSystemFont, sans-serif;
+  --bottom-nav-height: 64px; --bottom-nav-background: #0A0A0A; --bottom-nav-border-top: 1px solid #34363A;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; }
-body { font-family: var(--font-family); background-color: #000; background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("app/bg.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: #fff; display: flex; flex-direction: column; }
+body { font-family: var(--font-family); background-color: #0A0A0A; background-image: linear-gradient(rgba(10, 10, 10, 0.88), rgba(10, 10, 10, 0.94)), url("app/bg.jpg"); background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; color: var(--text); display: flex; flex-direction: column; }
 main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom)); position: relative; scroll-behavior: smooth; }
 .screen { display: none; animation: slideIn 0.3s cubic-bezier(0.25, 1, 0.5, 1); }
 .screen.active { display: block; }
@@ -25,32 +26,33 @@ main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: ca
 .tab-btn { background: none; border: none; font-size: 10px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .tab-btn svg { width: 24px; height: 24px; fill: currentColor; }
 .tab-btn.active { color: var(--accent-solid); }
-h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin: 10px 0; }
-h2 { font-size: 22px; font-weight: 600; margin: 10px 0; }
-h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-.card { background: var(--card); color: var(--text); border-radius: var(--card-radius); padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+h1 { font-family: "Arial Narrow", Impact, sans-serif; font-size: 38px; font-weight: 900; letter-spacing: 1px; margin: 10px 0; text-transform: uppercase; }
+h2 { font-family: "Arial Narrow", Impact, sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 0.5px; margin: 10px 0; text-transform: uppercase; }
+h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+.card { background: var(--card); color: var(--text); border: 1px solid var(--separator); border-radius: var(--card-radius); padding: 16px; margin-bottom: 16px; box-shadow: none; }
 .slot-card, .stat-box, .schedule-row, .client-row, .bottom-sheet { color: var(--text); }
-.btn { display: block; width: 100%; padding: 14px; border-radius: var(--button-radius); font-size: 16px; font-weight: 600; text-align: center; border: none; background: var(--accent); color: white; cursor: pointer; transition: opacity 0.2s; }
+.btn { display: block; width: 100%; padding: 14px; border-radius: var(--button-radius); font-size: 16px; font-weight: 800; text-align: center; border: none; background: var(--accent); color: #0A0A0A; cursor: pointer; transition: opacity 0.2s; }
 .btn:active { opacity: 0.7; }
-.btn.secondary { background: var(--bg); color: var(--accent-solid); }
+.btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--separator); }
 .btn.red { background: rgba(255, 59, 48, 0.1); color: var(--red); }
-.btn.green { background: rgba(52, 199, 89, 0.1); color: var(--green); }
-.btn.blue { background: rgba(0, 122, 255, 0.1); color: var(--blue); }
+.btn.green { background: var(--green); color: #0A0A0A; }
+.btn.blue { background: var(--blue); color: #0A0A0A; }
 .btn.instagram { background: rgba(225, 48, 108, 0.1); color: var(--instagram); }
 .btn.small { padding: 8px 12px; font-size: 13px; width: auto; }
-.input-group { background: var(--bg); border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; display: flex; flex-direction: column; }
+.input-group { background: var(--surface); border: 1px solid var(--separator); border-radius: 2px; padding: 12px 16px; margin-bottom: 12px; display: flex; flex-direction: column; }
 .input-group label { font-size: 12px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;}
 .input-group input, .input-group select { background: transparent; border: none; font-size: 17px; color: var(--text); outline: none; font-family: inherit; width: 100%; }
 .input-group input:disabled { color: var(--muted); }
 
-.slot-card { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 16px; border-radius: var(--card-radius); margin-bottom: 10px; cursor: pointer; transition: transform 0.1s; }
+.slot-card { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--separator); padding: 16px; border-radius: var(--card-radius); margin-bottom: 10px; cursor: pointer; transition: transform 0.1s; }
 .slot-card:active { transform: scale(0.98); }
 .slot-info strong { display: block; font-size: 17px; margin-bottom: 4px; }
 .slot-info span { font-size: 14px; color: var(--muted); }
 .chevron { color: var(--muted); font-size: 20px; font-weight: 300; }
-.badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-.badge.pkg { background: #FFF3E0; color: #E65100; }
-.badge.single { background: #E3F2FD; color: #1565C0; }
+.badge { display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 12px; font-weight: 800; }
+.badge.pkg { background: var(--accent); color: #0A0A0A; }
+.badge.single { background: var(--surface); color: var(--text); }
+.badge.free, .badge.paid { background: var(--green); color: #0A0A0A; }
 .badge.pending { background: #FFF9C4; color: #F57F17; }
 .badge.cancelled { background: #FFEBEE; color: #C62828; }
 .badge.closed { background: var(--bg); color: var(--muted); }
@@ -91,18 +93,46 @@ h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
 .modal-overlay.active { display: block; opacity: 1; }
 .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 20px 20px calc(20px + var(--safe-bottom)) 20px; z-index: 201; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); max-height: 90vh; overflow-y: auto; }
 .bottom-sheet.active { transform: translateY(0); }
+.brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.brand-header img { width: 88px; height: 88px; object-fit: contain; }
+.brand-header strong { font-family: "Arial Narrow", Impact, sans-serif; font-size: 28px; letter-spacing: 2px; }
+.price-grid { display: grid; gap: 8px; }
+.price-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+.price-row:last-child { border-bottom: none; }
+.price-row strong { font-size: 22px; white-space: nowrap; }
+.site-footer { margin: 24px 0 8px; text-align: center; color: var(--muted); }
+.site-footer img { width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; display: block; }
 .drag-handle { width: 40px; height: 5px; background: #C4C4C4; border-radius: 3px; margin: 0 auto 16px auto; }
 </style>
 </head>
 <body>
 <main id="main-scroll">
+  <header class="brand-header">
+    <img src="public/images/logo-chrome.png" alt="Логотип PITFLY">
+    <strong>PITFLY</strong>
+  </header>
   <!-- ГЛАВНАЯ -->
   <section id="scr-home" class="screen active">
-    <h1>Кинолог<br>PRO</h1>
-    <div class="card"><h2 style="margin-top:0">Дрессировка собак</h2><p style="color:var(--muted); font-size:15px; line-height:1.5">Занятия по кинологии: разовое занятие или абонемент на 5 занятий.</p></div>
-    <div class="card" style="background:var(--accent); color:white;">
-      <h3>Разовое занятие</h3><div style="font-size:28px; font-weight:700; margin-bottom:8px">1500 ₽</div>
-      <h3 style="margin-top:16px">Абонемент на 5 занятий</h3><div style="font-size:28px; font-weight:700">6000 ₽</div>
+    <h1>Физическая подготовка собак</h1>
+    <div class="card">
+      <h2 style="margin-top:0">Индивидуальный подход</h2>
+      <p style="color:var(--muted); font-size:15px; line-height:1.5">Занятия подбираются для конкретной собаки, её породы, возраста и физического состояния.</p>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">Прайс PITFLY</h2>
+      <div class="price-grid">
+        <div class="price-row"><span>Первая тренировка, 60 мин</span><strong>1000 ₽</strong></div>
+        <div class="price-row"><span>Разовая с тренером, 60 мин</span><strong>1800 ₽</strong></div>
+        <div class="price-row"><span>Щенки / мелкие породы, 40 мин</span><strong>1800 ₽</strong></div>
+        <div class="price-row"><span>Абонемент на 5 занятий</span><strong>7500 ₽</strong></div>
+        <div class="price-row"><span>Парная тренировка, с каждого</span><strong>1000 ₽</strong></div>
+        <div class="price-row"><span>Аренда со снарядами, 60 мин</span><strong>800 ₽</strong></div>
+        <div class="price-row"><span>Аренда без снарядов, 60 мин</span><strong>500 ₽</strong></div>
+        <div class="price-row"><span>Полный день со снарядами</span><strong>8000 ₽</strong></div>
+        <div class="price-row"><span>Полный день без снарядов</span><strong>5000 ₽</strong></div>
+        <div class="price-row"><span>Беговая дорожка, 30 мин</span><strong>500 ₽</strong></div>
+        <div class="price-row"><span>Беговая дорожка, 60 мин</span><strong>1000 ₽</strong></div>
+      </div>
     </div>
     <button class="btn" onclick="switchTab('scr-book')" style="margin-top:20px">Записаться на занятие</button>
   </section>
@@ -136,9 +166,26 @@ h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
           </div>
         </div>
 
-        <h3 style="margin-top:16px">Тип занятия</h3>
-        <label style="display:flex; align-items:center; gap:10px; margin-top:12px; font-size:16px"><input type="radio" name="service" value="single" checked style="width:20px; height:20px; accent-color:var(--accent-solid)"> Разовое занятие (1500 ₽ на месте)</label>
-        <label style="display:flex; align-items:center; gap:10px; margin-top:12px; font-size:16px"><input type="radio" name="service" value="package" style="width:20px; height:20px; accent-color:var(--accent-solid)"> Списать с абонемента</label>
+        <h3 style="margin-top:16px">Услуга</h3>
+        <div class="input-group">
+          <label>Выберите услугу</label>
+          <select id="book-service">
+            <option value="trial">Первая тренировка, 60 мин — 1000 ₽</option>
+            <option value="single_60">Разовая с тренером, 60 мин — 1800 ₽</option>
+            <option value="single_40">Разовая для щенков / мелких пород, 40 мин — 1800 ₽</option>
+            <option value="subscription">Абонемент на 5 занятий — 7500 ₽</option>
+            <option value="pair">Парная тренировка, с каждого — 1000 ₽</option>
+            <option value="rent_equipment">Аренда со снарядами, 60 мин — 800 ₽</option>
+            <option value="rent_plain">Аренда без снарядов, 60 мин — 500 ₽</option>
+            <option value="rent_day_plain">Полный день без снарядов — 5000 ₽</option>
+            <option value="rent_day_equipment">Полный день со снарядами — 8000 ₽</option>
+            <option value="treadmill_30">Беговая дорожка, 30 мин — 500 ₽</option>
+            <option value="treadmill_60">Беговая дорожка, 60 мин — 1000 ₽</option>
+          </select>
+        </div>
+        <h3 style="margin-top:16px">Оплата</h3>
+        <label style="display:flex; align-items:center; gap:10px; margin-top:12px; font-size:16px"><input type="radio" name="payment" value="single" checked style="width:20px; height:20px; accent-color:var(--accent-solid)"> Оплатить разово</label>
+        <label style="display:flex; align-items:center; gap:10px; margin-top:12px; font-size:16px"><input type="radio" name="payment" value="package" style="width:20px; height:20px; accent-color:var(--accent-solid)"> Списать с абонемента</label>
       </div>
       <button class="btn" onclick="submitBooking()">Подтвердить запись</button>
     </div>
@@ -232,6 +279,10 @@ h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
     </div>
   </section>
 
+  <footer class="site-footer">
+    <img src="public/images/logo-chrome.png" alt="PITFLY">
+    <span>PITFLY</span>
+  </footer>
   <div style="height: 150px; width: 100%; flex-shrink: 0;"></div>
 </main>
 
@@ -250,8 +301,23 @@ h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
 </nav>
 
 <script>
-const KEY = 'kinolog_v15_'; 
+const KEY = 'pitfly_v1_'; 
 const DB = { get: (k, def) => { try { return JSON.parse(localStorage.getItem(KEY+k)) ?? def; } catch { return def; } }, set: (k, v) => localStorage.setItem(KEY+k, JSON.stringify(v)) };
+
+const SERVICES = {
+  trial: { title: 'Первая тренировка', price: 1000, duration: 60 },
+  single_60: { title: 'Разовая с тренером', price: 1800, duration: 60 },
+  single_40: { title: 'Разовая для щенков / мелких пород', price: 1800, duration: 40 },
+  subscription: { title: 'Абонемент на 5 занятий', price: 7500, duration: 60 },
+  pair: { title: 'Парная тренировка', price: 1000, duration: 60 },
+  rent_equipment: { title: 'Аренда со снарядами', price: 800, duration: 60 },
+  rent_plain: { title: 'Аренда без снарядов', price: 500, duration: 60 },
+  rent_day_plain: { title: 'Полный день без снарядов', price: 5000, duration: 720 },
+  rent_day_equipment: { title: 'Полный день со снарядами', price: 8000, duration: 720 },
+  treadmill_30: { title: 'Беговая дорожка 30 мин', price: 500, duration: 30 },
+  treadmill_60: { title: 'Беговая дорожка 60 мин', price: 1000, duration: 60 }
+};
+const getServiceTitle = code => SERVICES[code]?.title || 'Разовая услуга';
 
 let state = { 
   slots: DB.get('slots', null), clients: DB.get('clients', null), 
@@ -267,7 +333,8 @@ if (!state.slots) {
     { phone: '79001234567', name: 'Анна', tg: '@anna_dog', ig: '@anna_inst', createdAt: new Date().toISOString() }, 
     { phone: '79412541232', name: 'Алла', tg: '', ig: '', createdAt: new Date().toISOString() }
   ];
-  state.packages = [{ id: crypto.randomUUID(), phone: '79001234567', total: 5, used: 1, activatedAt: new Date().toISOString() }];
+  const activatedAt = new Date();
+  state.packages = [{ id: crypto.randomUUID(), phone: '79001234567', total: 5, used: 1, activatedAt: activatedAt.toISOString(), expiresAt: new Date(activatedAt.getTime() + 45 * 86400000).toISOString() }];
   state.bookings = [
     { id: crypto.randomUUID(), slotId: state.slots[0].id, dt: state.slots[0].dt, phone: '79001234567', name: 'Анна', usePackage: true, status: 'confirmed', createdAt: new Date().toISOString() }
   ];
@@ -329,11 +396,13 @@ function sendInstagram(igNick, name, dateIso = '') {
   });
 }
 
-const getClientTotalRemaining = (phone) => state.packages.filter(p => p.phone === phone).reduce((sum, p) => sum + (p.total - p.used), 0);
+const getClientTotalRemaining = (phone) => state.packages
+  .filter(p => p.phone === phone && (!p.expiresAt || new Date(p.expiresAt) > new Date()))
+  .reduce((sum, p) => sum + (p.total - p.used), 0);
 
 // Сброс авторизации клиента
 function logoutUser() {
-  localStorage.removeItem('kinolog_my_phone');
+  localStorage.removeItem('pitfly_my_phone');
   toast('Вы вышли из профиля');
   if (document.getElementById('scr-book').classList.contains('active')) {
     resetWizard();
@@ -350,7 +419,7 @@ function switchTab(id) {
   if (id === 'scr-book') { resetWizard(); renderSlots(); }
   
   if (id === 'scr-cabinet') {
-    const savedPhone = localStorage.getItem('kinolog_my_phone');
+    const savedPhone = localStorage.getItem('pitfly_my_phone');
     if (savedPhone) {
       document.getElementById('cab-phone').value = fmtPhone(savedPhone);
       loadCabinet();
@@ -373,7 +442,7 @@ function resetWizard() {
   document.getElementById('book-ig').value = ''; 
 
   // АВТОЗАПОЛНЕНИЕ ДЛЯ АВТОРИЗОВАННЫХ
-  const savedPhone = localStorage.getItem('kinolog_my_phone');
+  const savedPhone = localStorage.getItem('pitfly_my_phone');
   if (savedPhone) {
     const client = state.clients.find(c => c.phone === savedPhone);
     if (client) {
@@ -408,7 +477,7 @@ function renderSlots() {
     return `<div class="slot-card" onclick="${booked ? '' : `pickSlot(${jsArg(s.id)})`}" style="${booked ? 'opacity:0.5; cursor:default;' : ''}">
       <div class="slot-info">
         <strong>${escapeHtml(fmtDate(s.dt))}</strong>
-        <span>${booked ? 'Занято' : 'Свободно'}</span>
+        <span class="${booked ? '' : 'badge free'}">${booked ? 'Занято' : 'Свободно'}</span>
       </div>
       ${!booked ? '<div class="chevron">›</div>' : ''}
     </div>`;
@@ -428,10 +497,11 @@ function submitBooking() {
   const phone = normPhone(document.getElementById('book-phone').value); 
   const tg = document.getElementById('book-tg').value.trim();
   const ig = document.getElementById('book-ig').value.trim();
-  const service = document.querySelector('input[name="service"]:checked').value;
+  const serviceCode = document.getElementById('book-service').value;
+  const payment = document.querySelector('input[name="payment"]:checked').value;
   
   if (!name) return toast('Введите имя'); if (phone.length !== 11) return toast('Введите полный номер телефона');
-  const slot = state.slots.find(s => s.id === bookSlotId); const usePackage = service === 'package';
+  const slot = state.slots.find(s => s.id === bookSlotId); const usePackage = payment === 'package';
   
   if (isSlotBooked(bookSlotId)) return toast('Это время уже занято');
   
@@ -439,7 +509,7 @@ function submitBooking() {
   let status = 'pending'; // По умолчанию ожидает
 
   if (usePackage) { 
-    pkg = state.packages.find(p => p.phone === phone && p.used < p.total); 
+    pkg = state.packages.find(p => p.phone === phone && p.used < p.total && (!p.expiresAt || new Date(p.expiresAt) > new Date()));
     if (!pkg) return toast('У вас нет активного абонемента'); 
     pkg.used += 1; 
     status = 'confirmed'; // С абонемента списываем и подтверждаем сразу
@@ -455,10 +525,10 @@ function submitBooking() {
     if (ig) client.ig = ig;
   }
   
-  state.bookings.push({ id: crypto.randomUUID(), slotId: bookSlotId, dt: slot.dt, phone, name, usePackage, status, createdAt: new Date().toISOString() });
+  state.bookings.push({ id: crypto.randomUUID(), slotId: bookSlotId, dt: slot.dt, phone, name, serviceCode, usePackage, status, createdAt: new Date().toISOString() });
   save(); 
   
-  localStorage.setItem('kinolog_my_phone', phone); // Запоминаем авторизацию
+  localStorage.setItem('pitfly_my_phone', phone);
   
   document.getElementById('step-2').classList.remove('active'); 
   document.getElementById('step-3').classList.add('active');
@@ -466,7 +536,7 @@ function submitBooking() {
   if (status === 'confirmed') {
     document.getElementById('success-icon').textContent = '✅';
     document.getElementById('success-title').textContent = 'Вы записаны!';
-    document.getElementById('success-text').innerHTML = `${escapeHtml(fmtDate(slot.dt))}<br>Списано с абонемента`;
+    document.getElementById('success-text').innerHTML = `${escapeHtml(fmtDate(slot.dt))}<br>${escapeHtml(getServiceTitle(serviceCode))}${usePackage ? '<br>Списано с абонемента' : ''}`;
   } else {
     document.getElementById('success-icon').textContent = '⏳';
     document.getElementById('success-title').textContent = 'Заявка отправлена!';
@@ -477,7 +547,7 @@ function submitBooking() {
 // --- КАБИНЕТ ---
 function loadCabinet() {
   const phone = normPhone(document.getElementById('cab-phone').value); if (phone.length !== 11) return toast('Введите полный номер телефона');
-  localStorage.setItem('kinolog_my_phone', phone);
+  localStorage.setItem('pitfly_my_phone', phone);
   
   const box = document.getElementById('cabinet-content'); 
   const remaining = getClientTotalRemaining(phone); 
@@ -505,7 +575,7 @@ function loadCabinet() {
       <div style="display:flex; justify-content:space-between; align-items:flex-start">
         <div>
           <h3 style="margin-bottom:4px">${escapeHtml(fmtDate(b.dt))}</h3>
-          <span class="badge ${b.usePackage ? 'pkg' : 'single'}">${b.usePackage ? 'Абонемент' : 'Разовое'}</span>
+          <span class="badge ${b.usePackage ? 'pkg' : 'single'}">${escapeHtml(getServiceTitle(b.serviceCode))}</span>
           ${statusBadge}
         </div>
         ${canCancel ? `<button class="btn red" style="width:auto; padding:8px 12px; font-size:13px" onclick="cancelBooking(${jsArg(b.id)})">Отменить</button>` : ''}
@@ -517,16 +587,20 @@ function loadCabinet() {
 
 function cancelBooking(id) {
   const b = state.bookings.find(x => x.id === id); if (!b) return; const h = (new Date(b.dt) - new Date()) / 3600000;
-  
+  if (h < 5) {
+    toast('Свяжитесь с тренером');
+    alert('Отмена разрешена не позднее чем за 5 часов до занятия. Свяжитесь с тренером.');
+    return;
+  }
+
   if (b.status === 'pending') {
     if (!confirm('Отменить заявку?')) return;
     b.status = 'cancelled';
   } else {
-    if (h < 24 && b.usePackage) { if (!confirm('До занятия менее 24 часов. Занятие не вернется на абонемент. Отменить?')) return; } 
-    else { if (!confirm('Отменить запись?')) return; }
+    if (!confirm('Отменить запись?')) return;
     
     b.status = 'cancelled'; 
-    if (b.usePackage && h >= 24) {
+    if (b.usePackage) {
       const pkg = state.packages.find(p => p.phone === b.phone && p.used > 0); 
       if (pkg) pkg.used -= 1; 
     }
@@ -626,7 +700,7 @@ function renderSchedule() {
           <div class="schedule-time">${String(hour).padStart(2,'0')}:00</div>
           <div class="schedule-content">
             <strong>${escapeHtml(booking.name)} ${booking.status==='pending' ? '<span class="badge pending" style="font-size:10px">Ждет</span>' : ''}</strong>
-            <span>${escapeHtml(fmtPhone(booking.phone))} · ${booking.usePackage ? 'Абонемент' : 'Разовое'}</span>
+            <span>${escapeHtml(fmtPhone(booking.phone))} · ${escapeHtml(getServiceTitle(booking.serviceCode))}</span>
           </div>
           <div class="schedule-action">
             ${tgBtn}${igBtn} ${actionBtns}
@@ -811,7 +885,7 @@ function openClientModal(phone) {
       <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; opacity:${b.status==='cancelled'?0.5:1}">
         <div>
           <strong style="display:block; font-size:14px;">${escapeHtml(fmtDate(b.dt))}</strong>
-          <span class="badge ${b.usePackage ? 'pkg' : 'single'}" style="margin-top:4px;">${b.usePackage ? 'Абонемент' : 'Разовое'}</span>
+          <span class="badge ${b.usePackage ? 'pkg' : 'single'}" style="margin-top:4px;">${escapeHtml(getServiceTitle(b.serviceCode))}</span>
           ${b.status === 'pending' ? '<span class="badge pending" style="margin-left:4px;">Ожидает</span>' : ''}
           ${b.status === 'cancelled' ? '<span style="color:var(--red); font-size:12px; margin-left:4px;">Отменено</span>' : ''}
         </div>
@@ -832,14 +906,18 @@ function closeClientModal() {
 }
 
 function activatePkg(phone) { 
-  state.packages.push({ id: crypto.randomUUID(), phone, total: 5, used: 0, activatedAt: new Date().toISOString() }); 
+  const activatedAt = new Date();
+  state.packages.push({ id: crypto.randomUUID(), phone, total: 5, used: 0, activatedAt: activatedAt.toISOString(), expiresAt: new Date(activatedAt.getTime() + 45 * 86400000).toISOString() });
   save(); toast('Абонемент активирован'); openClientModal(phone); renderClients(); renderStats();
 }
 
 function addPackage(phone) { 
   const activePkg = state.packages.find(p => p.phone === phone && p.used < p.total);
-  if (activePkg) { activePkg.total += 5; } 
-  else { state.packages.push({ id: crypto.randomUUID(), phone, total: 5, used: 0, activatedAt: new Date().toISOString() }); }
+  if (activePkg) { activePkg.total += 5; activePkg.expiresAt = new Date(new Date(activePkg.expiresAt || Date.now()).getTime() + 45 * 86400000).toISOString(); }
+  else {
+    const activatedAt = new Date();
+    state.packages.push({ id: crypto.randomUUID(), phone, total: 5, used: 0, activatedAt: activatedAt.toISOString(), expiresAt: new Date(activatedAt.getTime() + 45 * 86400000).toISOString() });
+  }
   save(); toast('+5 занятий добавлено'); openClientModal(phone); renderClients(); renderStats();
 }
 

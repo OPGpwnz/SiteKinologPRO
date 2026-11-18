@@ -1,15 +1,18 @@
 {
-  "brand_name": "Кинолог PRO",
-  "tagline": "Дрессировка собак",
-  "description": "Занятия по кинологии: разовое занятие или абонемент на 5 занятий.",
+  "brand_name": "PITFLY",
+  "tagline": "Физическая подготовка собак",
+  "description": "Индивидуальные занятия и аренда для физической подготовки собак.",
   "services": [
-    {
-      "title": "Разовое занятие",
-      "price": 1500
-    },
-    {
-      "title": "Абонемент на 5 занятий",
-      "price": 6000
-    }
+    { "code": "trial", "title": "Первая тренировка", "price": 1000, "duration_min": 60 },
+    { "code": "single_60", "title": "Разовая с тренером", "price": 1800, "duration_min": 60 },
+    { "code": "single_40", "title": "Разовая для щенков / мелких пород", "price": 1800, "duration_min": 40 },
+    { "code": "subscription", "title": "Абонемент на 5 занятий", "price": 7500, "duration_min": 60, "is_subscription": true },
+    { "code": "pair", "title": "Парная тренировка", "price": 1000, "duration_min": 60, "requires_pair": true },
+    { "code": "rent_equipment", "title": "Аренда со снарядами", "price": 800, "duration_min": 60 },
+    { "code": "rent_plain", "title": "Аренда без снарядов", "price": 500, "duration_min": 60 },
+    { "code": "rent_day_plain", "title": "Полный день без снарядов", "price": 5000, "duration_min": 720 },
+    { "code": "rent_day_equipment", "title": "Полный день со снарядами", "price": 8000, "duration_min": 720 },
+    { "code": "treadmill_30", "title": "Беговая дорожка 30 мин", "price": 500, "duration_min": 30 },
+    { "code": "treadmill_60", "title": "Беговая дорожка 60 мин", "price": 1000, "duration_min": 60 }
   ]
 }

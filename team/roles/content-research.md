@@ -7,7 +7,7 @@
 
 Формат JSON:
 {
-  "brand_name": "Кинолог PRO",
+  "brand_name": "PITFLY",
   "tagline": "Слоган",
   "description": "Описание",
   "services": [
