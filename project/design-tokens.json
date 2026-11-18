@@ -24,8 +24,8 @@
     },
     "bottomNav": {
       "height": "64px",
-      "background": "#FFFFFF",
-      "borderTop": "1px solid #E5E5EA"
+      "background": "#0A0A0A",
+      "borderTop": "1px solid #34363A"
     }
   }
 }

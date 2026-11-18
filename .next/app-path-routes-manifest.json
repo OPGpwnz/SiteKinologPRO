@@ -1,0 +1,13 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/admin/bookings/[id]/paid/route": "/api/admin/bookings/[id]/paid",
+  "/api/admin/slots/[id]/close/route": "/api/admin/slots/[id]/close",
+  "/api/admin/slots/bulk/route": "/api/admin/slots/bulk",
+  "/api/admin/slots/route": "/api/admin/slots",
+  "/api/admin/subscriptions/[id]/extend/route": "/api/admin/subscriptions/[id]/extend",
+  "/api/bookings/[id]/cancel/route": "/api/bookings/[id]/cancel",
+  "/api/bookings/route": "/api/bookings",
+  "/auth/callback/route": "/auth/callback",
+  "/page": "/"
+}

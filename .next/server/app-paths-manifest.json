@@ -1,0 +1,13 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/bookings/[id]/paid/route": "app/api/admin/bookings/[id]/paid/route.js",
+  "/api/admin/slots/[id]/close/route": "app/api/admin/slots/[id]/close/route.js",
+  "/api/admin/slots/bulk/route": "app/api/admin/slots/bulk/route.js",
+  "/api/admin/slots/route": "app/api/admin/slots/route.js",
+  "/api/admin/subscriptions/[id]/extend/route": "app/api/admin/subscriptions/[id]/extend/route.js",
+  "/api/bookings/[id]/cancel/route": "app/api/bookings/[id]/cancel/route.js",
+  "/api/bookings/route": "app/api/bookings/route.js",
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/page": "app/page.js"
+}

@@ -1,0 +1,26 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/2_fxnk36s8uq_.js"
+3:"/_next/static/chunks/1h55-za8l7tny.js"
+4:I[96923,["$2","$3"],"Providers"]
+5:I[39756,["$2","$3"],"default"]
+6:I[37457,["$2","$3"],"default"]
+a:"/_next/static/chunks/02p207ik31wa4.js"
+b:I[98248,["$2","$3","$a"],"PitflyApp"]
+c:I[97367,["$2","$3"],"OutletBoundary"]
+d:"$Sreact.suspense"
+10:"ViewportBoundary"
+11:I[97367,["$2","$3"],"$10"]
+12:"MetadataBoundary"
+13:I[97367,["$2","$3"],"$12"]
+:HL["/_next/static/chunks/2u9xcvytwps5e.css","style"]
+8:X
+9:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$Lb",null,{}],[["$","script","script-0",{"src":"/_next/static/chunks/02p207ik31wa4.js","async":true}]],["$","$Lc",null,{"children":["$","$d",null,{"name":"Next.MetadataOutlet","children":"$@e"}]}]]}],"p":"$@f","v":null,"s":"$8"}}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/2u9xcvytwps5e.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/2_fxnk36s8uq_.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/1h55-za8l7tny.js","async":true}]],["$","html",null,{"lang":"ru","children":["$","body",null,{"className":"PLuoyG_variable Covajq_variable","children":["$","$L4",null,{"children":["$","$L5",null,{"parallelRouterKey":"children","template":["$","$L6",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}]}]}]}]]}],"p":"$@7","v":null,"s":"$8"},"c":"$Q9"},"h":{"r":["$","$1","h",{"children":[null,["$","$L11",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#0a0a0a"}]]}],["$","$L13",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$d",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"PITFLY — Физическая подготовка собак"}],["$","meta","1",{"name":"description","content":"Индивидуальные тренировки для собак. Услуги, расписание и онлайн-запись PITFLY."}]]}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":"$@14","v":null,"s":"$8"}},"a":"$@15","u":"$@16","b":"hiRh0DsyXkyOmyejl9Qua"}
+e:null
+8:300
+16:true
+8:C
+15:0
+7:"$undefined"
+14:"$undefined"
+f:"$undefined"
