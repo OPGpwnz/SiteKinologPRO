@@ -15,7 +15,13 @@ export async function PATCH(
   })
 
   if (error) {
-    return NextResponse.json({ error: 'Не удалось отметить оплату' }, { status: 403 })
+    if (error.message.includes('not_trainer')) {
+      return NextResponse.json({ error: 'Доступ запрещен' }, { status: 403 })
+    }
+    if (error.message.includes('booking_not_found')) {
+      return NextResponse.json({ error: 'Запись не найдена' }, { status: 404 })
+    }
+    return NextResponse.json({ error: 'Не удалось отметить оплату' }, { status: 409 })
   }
   return NextResponse.json({ booking: data })
 }

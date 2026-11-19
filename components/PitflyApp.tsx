@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
+import { getAuthErrorMessage, validateAuthCredentials } from '@/lib/auth-validation'
+import {
+  addCalendarDays,
+  BUSINESS_TIME_ZONE,
+  formatBusinessDateTime,
+  formatBusinessDateTab,
+  generateBulkScheduleSlots,
+  getDateKeyInBusinessTimeZone,
+  localDateTimeToIso,
+  todayDateKey,
+  validateBulkScheduleInput,
+} from '@/lib/pitfly-time'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 
 type Service = {
@@ -85,29 +97,19 @@ const BULK_WEEKDAYS = [
 ]
 const BULK_HOURS = Array.from({ length: 15 }, (_, index) => index + 8)
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
+const formatDate = (value: string) => formatBusinessDateTime(value)
 const formatRubles = (value: number) =>
   new Intl.NumberFormat('ru-RU', {
     style: 'currency',
     currency: 'RUB',
     maximumFractionDigits: 0,
   }).format(value)
-const formatDateInput = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const getDateKey = (value: string) => {
-  const date = new Date(value)
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  const dateKey = getDateKeyInBusinessTimeZone(value)
+  if (!dateKey) throw new RangeError(`Invalid slot timestamp: ${value}`)
+  return dateKey
 }
-const formatDateTab = (dateKey: string) =>
-  new Intl.DateTimeFormat('ru-RU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(`${dateKey}T12:00:00`))
+const formatDateTab = formatBusinessDateTab
 
 export function PitflyApp() {
   const supabase = createSupabaseBrowserClient()
@@ -125,7 +127,7 @@ export function PitflyApp() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [authMode, setAuthMode] = useState<'magic-link' | 'password'>('magic-link')
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
   const [authMessage, setAuthMessage] = useState('')
   const [services, setServices] = useState<Service[]>(FALLBACK_SERVICES)
   const [unavailableServiceCodes, setUnavailableServiceCodes] = useState<string[]>([])
@@ -163,7 +165,7 @@ export function PitflyApp() {
         .select('*')
         .order('id', { ascending: true }),
       supabase.rpc('get_available_pitfly_slots_v3', {
-        p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        p_timezone: BUSINESS_TIME_ZONE,
       }),
     ])
 
@@ -361,10 +363,13 @@ export function PitflyApp() {
 
   function seedDevData() {
     const now = new Date()
+    const baseDate = todayDateKey(now)
+    if (!baseDate) throw new RangeError('Unable to determine the current PITFLY date.')
     const createDevSlot = (id: string, daysAhead: number, hour: number, capacity: number): Slot => {
-      const starts = new Date(now)
-      starts.setDate(starts.getDate() + daysAhead)
-      starts.setHours(hour, 0, 0, 0)
+      const dateKey = addCalendarDays(baseDate, daysAhead)
+      const startsAt = localDateTimeToIso(`${dateKey}T${String(hour).padStart(2, '0')}:00`)
+      if (!startsAt) throw new RangeError(`Invalid development slot time: ${dateKey} ${hour}:00`)
+      const starts = new Date(startsAt)
       return {
         id,
         starts_at: starts.toISOString(),
@@ -443,7 +448,7 @@ export function PitflyApp() {
   useEffect(() => {
     let isMounted = true
     if (new URLSearchParams(window.location.search).get('authError') === 'callback') {
-      setAuthMessage('Не удалось завершить вход по ссылке. Запросите новую.')
+      setAuthMessage('Не удалось подтвердить email. Откройте ссылку из письма или войдите снова.')
     }
 
     const devSession = sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email
@@ -556,33 +561,70 @@ export function PitflyApp() {
     }
   }, [selectedBookingDate, availableBookingDates])
 
-  async function sendOtp() {
-    setLoading(true)
-    setAuthMessage('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    setLoading(false)
-    setAuthMessage(error ? error.message : 'Ссылка для входа отправлена на email.')
-  }
+  async function submitAuthForm() {
+    const validationError = validateAuthCredentials(email, password, authMode)
+    if (validationError) {
+      setAuthMessage(validationError)
+      return
+    }
 
-  async function signInWithPassword() {
     setLoading(true)
     setAuthMessage('')
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (authMode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        })
+        if (error) {
+          console.error('Supabase password sign-in failed:', error)
+          setAuthMessage(getAuthErrorMessage(error.code, error.message, authMode))
+          return
+        }
+        if (!data.user) {
+          console.error('Supabase password sign-in returned no user.')
+          setAuthMessage('Не удалось войти. Повторите попытку.')
+          return
+        }
+
+        setAuthUser(data.user)
+        const profileError = await refreshProfile(data.user.id)
+        router.refresh()
+        setAuthMessage(profileError ?? 'Вход выполнен.')
+        return
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
       if (error) {
-        setAuthMessage(error.message)
+        console.error('Supabase sign-up failed:', error)
+        setAuthMessage(getAuthErrorMessage(error.code, error.message, authMode))
+        return
+      }
+      if (!data.user) {
+        console.error('Supabase sign-up returned no user.')
+        setAuthMessage('Не удалось создать аккаунт. Попробуйте ещё раз.')
+        router.refresh()
+        return
+      }
+      if (!data.session) {
+        setAuthMessage('Регистрация выполнена. Подтвердите email по ссылке из письма, затем войдите.')
+        router.refresh()
         return
       }
 
       setAuthUser(data.user)
       const profileError = await refreshProfile(data.user.id)
       router.refresh()
-      setAuthMessage(profileError ?? 'Вход выполнен.')
+      setAuthMessage(profileError ?? 'Регистрация выполнена. Вы вошли.')
+    } catch (error) {
+      console.error('Unexpected Supabase authentication failure:', error)
+      setAuthMessage('Не удалось связаться с сервисом авторизации. Попробуйте позже.')
     } finally {
       setLoading(false)
     }
@@ -802,12 +844,13 @@ export function PitflyApp() {
       setMessage('Укажите дату и время.')
       return
     }
-    const starts = new Date(selectedSlotDate)
-    if (!Number.isFinite(starts.getTime())) {
+    const startsAt = localDateTimeToIso(selectedSlotDate)
+    if (!startsAt) {
       setLoading(false)
       setMessage('Некорректная дата и время.')
       return
     }
+    const starts = new Date(startsAt)
     if (starts <= new Date() || !Number.isInteger(duration) || duration < 1
       || !Number.isInteger(capacity) || capacity < 1 || capacity > 2) {
       setLoading(false)
@@ -848,38 +891,26 @@ export function PitflyApp() {
 
   async function createBulkSlots() {
     setLoading(true)
-    const cursor = new Date(`${bulkStartDate}T00:00:00`)
-    const last = new Date(`${bulkEndDate}T23:59:59`)
-    if (!bulkStartDate || !bulkEndDate || !Number.isFinite(cursor.getTime())
-      || !Number.isFinite(last.getTime()) || cursor > last
-      || !bulkWeekdays.length
-      || bulkWeekdays.some(day => !Number.isInteger(day) || day < 0 || day > 6)
-      || !bulkHours.length
-      || bulkHours.some(hour => !Number.isInteger(hour) || hour < 8 || hour > 22)
-      || !Number.isInteger(bulkCapacity) || bulkCapacity < 1 || bulkCapacity > 2) {
+    const schedule = {
+      startDate: bulkStartDate,
+      endDate: bulkEndDate,
+      weekdays: bulkWeekdays,
+      hours: bulkHours,
+      capacity: bulkCapacity,
+    }
+    const validationError = validateBulkScheduleInput(schedule)
+    if (validationError) {
       setLoading(false)
-      setMessage('Выберите период, хотя бы один день и час, а также тип слота.')
+      setMessage(validationError)
       return
     }
     if (isDevMode) {
-      const generated: Slot[] = []
-      for (let date = new Date(cursor); date <= last; date.setDate(date.getDate() + 1)) {
-        if (!bulkWeekdays.includes(date.getDay())) continue
-        for (const hour of bulkHours) {
-          const starts = new Date(date)
-          starts.setHours(hour, 0, 0, 0)
-          if (starts <= new Date()) continue
-          generated.push({
-            id: `dev-slot-${starts.getTime()}`,
-            starts_at: starts.toISOString(),
-            ends_at: new Date(starts.getTime() + 60 * 60000).toISOString(),
-            capacity: bulkCapacity,
-            is_open: true,
-            booked_count: 0,
-            available_places: bulkCapacity,
-          })
-        }
-      }
+      const generated: Slot[] = generateBulkScheduleSlots(schedule).map(slot => ({
+        ...slot,
+        id: `dev-slot-${slot.starts_at}`,
+        booked_count: 0,
+        available_places: slot.capacity,
+      }))
       if (!generated.length) {
         setLoading(false)
         setMessage('В выбранном периоде не осталось будущих слотов.')
@@ -908,12 +939,13 @@ export function PitflyApp() {
   }
 
   function applyBulkPeriod(days: 7 | 14 | 30) {
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(start)
-    end.setDate(end.getDate() + days - 1)
-    setBulkStartDate(formatDateInput(start))
-    setBulkEndDate(formatDateInput(end))
+    const start = todayDateKey()
+    if (!start) {
+      setMessage('Не удалось определить дату для расписания.')
+      return
+    }
+    setBulkStartDate(start)
+    setBulkEndDate(addCalendarDays(start, days - 1))
   }
 
   async function closeSlot(id: string) {
@@ -925,6 +957,23 @@ export function PitflyApp() {
     const response = await fetch(`/api/admin/slots/${id}/close`, { method: 'PATCH' })
     const payload = await response.json()
     setMessage(payload.error || 'Слот закрыт.')
+    if (response.ok) {
+      await loadCommonData()
+      await loadAdminData()
+    }
+  }
+
+  async function deleteSlot(id: string) {
+    if (!window.confirm('Удалить слот? Слоты, у которых есть записи, удалить нельзя.')) return
+    if (isDevMode) {
+      setSlots(prev => prev.filter(slot => slot.id !== id))
+      setMessage('Dev Mode: слот удалён.')
+      return
+    }
+
+    const response = await fetch(`/api/admin/slots/${id}`, { method: 'DELETE' })
+    const payload = await response.json()
+    setMessage(payload.error || 'Слот удалён.')
     if (response.ok) {
       await loadCommonData()
       await loadAdminData()
@@ -1176,7 +1225,7 @@ export function PitflyApp() {
                     onClick={() => setSelectedSlot(slot.id)}
                   >
                     <span className="slot-date">
-                      {new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: '2-digit', month: 'short' }).format(new Date(slot.starts_at))}
+                      {formatBusinessDateTime(slot.starts_at, { weekday: 'short', day: '2-digit', month: 'short' })}
                     </span>
                     {isFullDayService ? (
                       <>
@@ -1185,7 +1234,7 @@ export function PitflyApp() {
                       </>
                     ) : (
                       <>
-                        <strong>{new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date(slot.starts_at))}</strong>
+                        <strong>{formatBusinessDateTime(slot.starts_at, { hour: '2-digit', minute: '2-digit' })}</strong>
                         <small>
                           {slot.available_places === undefined
                             ? `Вместимость: ${slot.capacity}`
@@ -1244,11 +1293,7 @@ export function PitflyApp() {
               <div className="card">
                 <form onSubmit={event => {
                   event.preventDefault()
-                  if (authMode === 'password') {
-                    void signInWithPassword()
-                  } else {
-                    void sendOtp()
-                  }
+                  void submitAuthForm()
                 }}>
                   <label>
                     Email
@@ -1261,33 +1306,43 @@ export function PitflyApp() {
                       required
                     />
                   </label>
-                  {authMode === 'password' && (
-                    <label>
-                      Пароль
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={event => setPassword(event.target.value)}
-                        autoComplete="current-password"
-                        required
-                      />
-                    </label>
-                  )}
+                  <label>
+                    Пароль
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={event => setPassword(event.target.value)}
+                      autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                      minLength={authMode === 'signup' ? 6 : undefined}
+                      required
+                    />
+                  </label>
+                  <div className="auth-mode-tabs" role="tablist" aria-label="Способ авторизации">
+                    <button
+                      className={`button secondary ${authMode === 'login' ? 'selected' : ''}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={authMode === 'login'}
+                      disabled={loading}
+                      onClick={() => { setAuthMode('login'); setAuthMessage('') }}
+                    >
+                      Вход
+                    </button>
+                    <button
+                      className={`button secondary ${authMode === 'signup' ? 'selected' : ''}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={authMode === 'signup'}
+                      disabled={loading}
+                      onClick={() => { setAuthMode('signup'); setAuthMessage('') }}
+                    >
+                      Регистрация
+                    </button>
+                  </div>
                   <button className="button" type="submit" disabled={loading}>
                     {loading
-                      ? (authMode === 'password' ? 'Вход...' : 'Отправка...')
-                      : (authMode === 'password' ? 'Войти' : 'Получить Magic Link')}
-                  </button>
-                  <button
-                    className="button secondary auth-mode-toggle"
-                    type="button"
-                    disabled={loading}
-                    onClick={() => {
-                      setAuthMode(authMode === 'magic-link' ? 'password' : 'magic-link')
-                      setAuthMessage('')
-                    }}
-                  >
-                    {authMode === 'magic-link' ? 'Войти по паролю' : 'Войти по Magic Link'}
+                      ? (authMode === 'login' ? 'Вход...' : 'Регистрация...')
+                      : (authMode === 'login' ? 'Войти' : 'Создать аккаунт')}
                   </button>
                   {authMessage && <p className="muted">{authMessage}</p>}
                 </form>
@@ -1553,9 +1608,14 @@ export function PitflyApp() {
                               <td>{formatDate(slot.starts_at)}</td>
                               <td>{slot.available_places ?? slot.capacity} / {slot.capacity}</td>
                               <td>
-                                <button className="button red small" disabled={loading} onClick={() => closeSlot(slot.id)}>
-                                  Закрыть
-                                </button>
+                                <div className="slot-actions">
+                                  <button className="button red small" disabled={loading} onClick={() => closeSlot(slot.id)}>
+                                    Закрыть
+                                  </button>
+                                  <button className="button secondary small" disabled={loading} onClick={() => deleteSlot(slot.id)}>
+                                    Удалить
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))

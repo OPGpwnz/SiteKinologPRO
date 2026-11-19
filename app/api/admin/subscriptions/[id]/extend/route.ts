@@ -15,7 +15,13 @@ export async function PATCH(
   })
 
   if (error) {
-    return NextResponse.json({ error: 'Не удалось продлить абонемент' }, { status: 403 })
+    if (error.message.includes('not_trainer')) {
+      return NextResponse.json({ error: 'Доступ запрещен' }, { status: 403 })
+    }
+    if (error.message.includes('subscription_not_found')) {
+      return NextResponse.json({ error: 'Абонемент не найден' }, { status: 404 })
+    }
+    return NextResponse.json({ error: 'Не удалось продлить абонемент' }, { status: 409 })
   }
   return NextResponse.json({ subscription: data })
 }

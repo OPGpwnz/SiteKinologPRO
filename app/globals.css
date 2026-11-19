@@ -702,9 +702,20 @@ h1, h2, h3 {
   color: #071318;
 }
 .button.secondary { background: #202124; color: #dfe0e3; border-color: #414349; }
-.cabinet-page .auth-mode-toggle { margin-top: 10px; }
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.auth-mode-tabs .button { width: auto; }
+.auth-mode-tabs .button.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .button.red { background: rgba(255,77,77,.12); color: var(--red); border-color: rgba(255,77,77,.35); }
 .button.small { width: auto; min-height: 34px; padding: 7px 10px; font-size: clamp(0.75rem, .9vw, .875rem); }
+.slot-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .button.dev-trainer-button {
   margin-top: 10px;
   border-color: var(--green);

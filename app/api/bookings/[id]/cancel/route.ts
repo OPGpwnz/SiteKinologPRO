@@ -24,6 +24,12 @@ export async function PATCH(
         { status: 403 },
       )
     }
+    if (error.message.includes('booking_not_active')) {
+      return NextResponse.json({ error: 'Отменить можно только активную запись' }, { status: 409 })
+    }
+    if (error.message.includes('booking_not_found')) {
+      return NextResponse.json({ error: 'Запись не найдена' }, { status: 404 })
+    }
     return NextResponse.json({ error: 'Не удалось отменить запись' }, { status: 409 })
   }
 
