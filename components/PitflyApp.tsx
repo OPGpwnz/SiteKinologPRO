@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 
 type Service = {
@@ -109,6 +111,7 @@ const formatDateTab = (dateKey: string) =>
 
 export function PitflyApp() {
   const supabase = createSupabaseBrowserClient()
+  const router = useRouter()
   const DEV_TRAINER = {
     id: '00000000-0000-4000-8000-000000000001',
     email: 'momentfd@gmail.com',
@@ -117,7 +120,9 @@ export function PitflyApp() {
   }
   const [isDevMode, setIsDevMode] = useState(false)
   const [tab, setTab] = useState<'home' | 'book' | 'cabinet' | 'admin'>('home')
+  const [authUser, setAuthUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authMode, setAuthMode] = useState<'magic-link' | 'password'>('magic-link')
@@ -142,6 +147,7 @@ export function PitflyApp() {
   const [bulkHours, setBulkHours] = useState<number[]>([10, 11, 15, 18])
   const [bulkCapacity, setBulkCapacity] = useState(1)
   const [serviceFilter, setServiceFilter] = useState('all')
+  const profileRefreshId = useRef(0)
 
   const loadCommonData = useCallback(async () => {
     if (sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email) {
@@ -267,32 +273,91 @@ export function PitflyApp() {
     setAllSubscriptions(subscriptionsResult.data as Subscription[])
   }, [supabase])
 
-  const refreshProfile = useCallback(async () => {
+  const clearAuthState = useCallback(() => {
+    profileRefreshId.current += 1
+    setAuthUser(null)
+    setProfile(null)
+    setIsAdmin(false)
+    setBookings([])
+    setSubscriptions([])
+    setAllBookings([])
+    setAllSubscriptions([])
+  }, [])
+
+  const refreshProfile = useCallback(async (expectedUserId?: string): Promise<string | null> => {
+    const requestId = ++profileRefreshId.current
     if (sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email) {
       setIsDevMode(true)
       setProfile(DEV_TRAINER)
-      return
+      setIsAdmin(true)
+      return null
     }
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (requestId !== profileRefreshId.current) return null
+    if (sessionError) {
+      console.error('Failed to read Supabase session from browser storage:', sessionError)
+      clearAuthState()
+      const errorMessage = `Не удалось восстановить сессию: ${sessionError.message}`
+      setAuthMessage(errorMessage)
+      return errorMessage
+    }
+
+    if (!session) {
+      clearAuthState()
+      return null
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (requestId !== profileRefreshId.current) return null
+    if (userError) {
+      console.error('Failed to restore Supabase user session:', userError)
+      clearAuthState()
+      const errorMessage = `Не удалось восстановить сессию: ${userError.message}`
+      setAuthMessage(errorMessage)
+      return errorMessage
+    }
+
     if (!user) {
-      setProfile(null)
-      setBookings([])
-      setSubscriptions([])
-      return
+      clearAuthState()
+      return null
     }
 
+    if (expectedUserId && user.id !== expectedUserId) {
+      console.error('Supabase user changed while refreshing the profile:', {
+        expectedUserId,
+        actualUserId: user.id,
+      })
+    }
+
+    setAuthUser(user)
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, phone, role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (!error && data) {
-      setProfile(data as Profile)
-      await loadClientData(user.id)
+    if (requestId !== profileRefreshId.current) return null
+    if (error || !data) {
+      const profileError = error ?? new Error('Профиль пользователя не найден в public.profiles.')
+      console.error(`Failed to load profile for Supabase user ${user.id}:`, profileError)
+      setProfile(null)
+      setIsAdmin(false)
+      const errorMessage = `Не удалось загрузить профиль: ${profileError.message}`
+      setAuthMessage(errorMessage)
+      return errorMessage
     }
-  }, [supabase, loadClientData])
+
+    const nextProfile = data as Profile
+    setProfile(nextProfile)
+    setIsAdmin(nextProfile.role === 'trainer')
+    await loadClientData(user.id)
+    return null
+  }, [supabase, loadClientData, clearAuthState])
+
+  const restoreSession = useCallback(async () => {
+    await refreshProfile()
+  }, [refreshProfile])
 
   function seedDevData() {
     const now = new Date()
@@ -369,36 +434,61 @@ export function PitflyApp() {
     sessionStorage.setItem('pitfly_dev_session', DEV_TRAINER.email)
     setIsDevMode(true)
     setProfile(DEV_TRAINER)
+    setIsAdmin(true)
     seedDevData()
     setAuthMessage('')
     setMessage('Dev Mode: тестовый тренер активирован.')
   }
 
   useEffect(() => {
+    let isMounted = true
+    if (new URLSearchParams(window.location.search).get('authError') === 'callback') {
+      setAuthMessage('Не удалось завершить вход по ссылке. Запросите новую.')
+    }
+
     const devSession = sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email
     if (devSession) {
       setIsDevMode(true)
       setProfile(DEV_TRAINER)
+      setIsAdmin(true)
       seedDevData()
     } else {
       void loadCommonData()
-      void refreshProfile()
+      void restoreSession()
     }
 
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      if (sessionStorage.getItem('pitfly_dev_session') !== DEV_TRAINER.email) {
-        void refreshProfile()
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email) return
+
+      if (event === 'INITIAL_SESSION') {
+        setAuthUser(session?.user ?? null)
+        return
+      }
+
+      if (event === 'SIGNED_OUT' || !session) {
+        clearAuthState()
+        return
+      }
+
+      setAuthUser(session.user)
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        window.setTimeout(() => {
+          if (isMounted) void refreshProfile(session.user.id)
+        }, 0)
       }
     })
-    return () => data.subscription.unsubscribe()
-  }, [loadCommonData, refreshProfile, supabase])
+    return () => {
+      isMounted = false
+      data.subscription.unsubscribe()
+    }
+  }, [loadCommonData, restoreSession, refreshProfile, clearAuthState, supabase])
 
   useEffect(() => {
     if (isDevMode) return
-    if (profile?.role === 'trainer' && tab === 'admin') {
+    if (isAdmin && tab === 'admin') {
       void loadAdminData()
     }
-  }, [isDevMode, profile, tab, loadAdminData])
+  }, [isDevMode, isAdmin, tab, loadAdminData])
 
   useEffect(() => {
     if (services.length && !services.some(service => service.code === selectedService)) {
@@ -482,25 +572,38 @@ export function PitflyApp() {
   async function signInWithPassword() {
     setLoading(true)
     setAuthMessage('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    setAuthMessage(error ? error.message : 'Вход выполнен.')
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setAuthMessage(error.message)
+        return
+      }
+
+      setAuthUser(data.user)
+      const profileError = await refreshProfile(data.user.id)
+      router.refresh()
+      setAuthMessage(profileError ?? 'Вход выполнен.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function signOut() {
     if (sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email) {
       sessionStorage.removeItem('pitfly_dev_session')
       setIsDevMode(false)
-      setProfile(null)
-      setBookings([])
-      setSubscriptions([])
-      setAllBookings([])
-      setAllSubscriptions([])
+      clearAuthState()
       setMessage('Dev Mode отключен.')
       return
     }
-    await supabase.auth.signOut()
-    setProfile(null)
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Failed to sign out from Supabase:', error)
+      setMessage(`Не удалось выйти: ${error.message}`)
+      return
+    }
+    clearAuthState()
+    router.refresh()
   }
 
   async function createBooking() {
@@ -910,12 +1013,12 @@ export function PitflyApp() {
           <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>Главная</button>
           <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}>Запись</button>
           <button className={tab === 'cabinet' ? 'active' : ''} onClick={() => setTab('cabinet')}>Кабинет</button>
-          {profile?.role === 'trainer' && (
+          {isAdmin && (
             <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Админ</button>
           )}
         </nav>
         <div className="header-account">
-          {profile ? (
+          {authUser || isDevMode ? (
             <button className="button secondary small" onClick={signOut}>Выйти</button>
           ) : (
             <button className="button secondary small" onClick={() => setTab('cabinet')}>Войти</button>
@@ -1247,7 +1350,7 @@ export function PitflyApp() {
 
         {tab === 'admin' && (
           <section className="admin-panel">
-            {profile?.role !== 'trainer' ? (
+            {!isAdmin ? (
               <div className="card notice-card">Раздел доступен только профилям тренера.</div>
             ) : (
               <>
@@ -1474,7 +1577,7 @@ export function PitflyApp() {
         <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>Главная</button>
         <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}>Запись</button>
         <button className={tab === 'cabinet' ? 'active' : ''} onClick={() => setTab('cabinet')}>Кабинет</button>
-        {profile?.role === 'trainer' && (
+        {isAdmin && (
           <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Админ</button>
         )}
       </nav>
