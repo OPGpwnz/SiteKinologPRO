@@ -119,6 +119,8 @@ export function PitflyApp() {
   const [tab, setTab] = useState<'home' | 'book' | 'cabinet' | 'admin'>('home')
   const [profile, setProfile] = useState<Profile | null>(null)
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'magic-link' | 'password'>('magic-link')
   const [authMessage, setAuthMessage] = useState('')
   const [services, setServices] = useState<Service[]>(FALLBACK_SERVICES)
   const [unavailableServiceCodes, setUnavailableServiceCodes] = useState<string[]>([])
@@ -475,6 +477,14 @@ export function PitflyApp() {
     })
     setLoading(false)
     setAuthMessage(error ? error.message : 'Ссылка для входа отправлена на email.')
+  }
+
+  async function signInWithPassword() {
+    setLoading(true)
+    setAuthMessage('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    setAuthMessage(error ? error.message : 'Вход выполнен.')
   }
 
   async function signOut() {
@@ -1129,19 +1139,55 @@ export function PitflyApp() {
             <h1>Личный кабинет</h1>
             {!profile ? (
               <div className="card">
-                <label>
-                  Email
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={event => setEmail(event.target.value)}
-                    placeholder="name@example.com"
-                  />
-                </label>
-                <button className="button" disabled={loading} onClick={sendOtp}>
-                  Получить Magic Link
-                </button>
-                {authMessage && <p className="muted">{authMessage}</p>}
+                <form onSubmit={event => {
+                  event.preventDefault()
+                  if (authMode === 'password') {
+                    void signInWithPassword()
+                  } else {
+                    void sendOtp()
+                  }
+                }}>
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={event => setEmail(event.target.value)}
+                      placeholder="name@example.com"
+                      autoComplete="email"
+                      required
+                    />
+                  </label>
+                  {authMode === 'password' && (
+                    <label>
+                      Пароль
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={event => setPassword(event.target.value)}
+                        autoComplete="current-password"
+                        required
+                      />
+                    </label>
+                  )}
+                  <button className="button" type="submit" disabled={loading}>
+                    {loading
+                      ? (authMode === 'password' ? 'Вход...' : 'Отправка...')
+                      : (authMode === 'password' ? 'Войти' : 'Получить Magic Link')}
+                  </button>
+                  <button
+                    className="button secondary auth-mode-toggle"
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      setAuthMode(authMode === 'magic-link' ? 'password' : 'magic-link')
+                      setAuthMessage('')
+                    }}
+                  >
+                    {authMode === 'magic-link' ? 'Войти по паролю' : 'Войти по Magic Link'}
+                  </button>
+                  {authMessage && <p className="muted">{authMessage}</p>}
+                </form>
                 {process.env.NODE_ENV === 'development' && (
                   <button
                     type="button"

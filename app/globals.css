@@ -702,6 +702,7 @@ h1, h2, h3 {
   color: #071318;
 }
 .button.secondary { background: #202124; color: #dfe0e3; border-color: #414349; }
+.cabinet-page .auth-mode-toggle { margin-top: 10px; }
 .button.red { background: rgba(255,77,77,.12); color: var(--red); border-color: rgba(255,77,77,.35); }
 .button.small { width: auto; min-height: 34px; padding: 7px 10px; font-size: clamp(0.75rem, .9vw, .875rem); }
 .button.dev-trainer-button {
