@@ -128,35 +128,39 @@
 .landing-container .catalog {
   margin: 0 0 clamp(24px, 5vw, 66px);
   padding: clamp(24px, 4vw, 58px);
-  color: #17171b;
+  color: #f5f9ff;
+  border: 1px solid #8cc9ff48;
   border-radius: 32px;
-  background: linear-gradient(155deg, #f1f1f3, #c8c9ce 65%, #b3b4bc);
+  background: radial-gradient(ellipse at 95% 0%, #2e98e54d, transparent 58%),
+    linear-gradient(145deg, #245fabc2, #183e7bc7 53%, #0e214bc9);
+  backdrop-filter: blur(16px);
 }
 
 .landing-container .catalog-head { align-items: flex-start; flex-direction: column; gap: 23px; margin-bottom: 27px; }
 .landing-container .catalog .filters { gap: 7px; }
-.landing-container .catalog .filters button { min-height: 40px; border-radius: 99px; border-color: #2223; color: #25252c; }
+.landing-container .catalog .filters button { min-height: 40px; border-radius: 99px; border-color: #a4d5ff60; background: #102d5561; color: #f1f7ff; }
 .landing-container .catalog .filters button:hover,
-.landing-container .catalog .filters button.selected { background: #222226; color: #fff; }
+.landing-container .catalog .filters button.selected { background: #d5ebff; border-color: #d5ebff; color: #0c244a; }
 .landing-container .price-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .landing-container .service-card {
   min-height: 235px;
   padding: 22px;
   border-radius: 18px;
-  border-color: #ffffffa6;
-  color: #18181c;
-  background: #f4f4f7;
-  transition: background .25s, transform .25s, box-shadow .25s;
+  border-color: #a6d6ff52;
+  color: #f2f8ff;
+  background: linear-gradient(155deg, #97cbff23, #071a39a8 75%);
+  box-shadow: inset 0 1px 0 #d3ebff20;
+  transition: border-color .25s, transform .25s, box-shadow .25s;
 }
-.landing-container .service-card:hover { background: #fff; box-shadow: 0 10px 24px #16162126; transform: translateY(-4px); }
+.landing-container .service-card:hover { border-color: #b4deff97; box-shadow: 0 10px 24px #07162e60; transform: translateY(-4px); }
 .landing-container .service-card h3 { font: 800 clamp(1.1rem, 2vw, 1.42rem)/1.12 var(--title); text-transform: none; letter-spacing: -.035em; }
-.landing-container .service-card p { color: #474750; }
-.landing-container .card-foot { border-color: #1c1c231f; }
-.landing-container .card-foot strong { color: #18181c; }
-.landing-container .time { border: 0; border-radius: 99px; background: #e6e6eb; color: #373740; font: 700 .77rem/1.3 var(--body); letter-spacing: 0; padding: 5px 10px; }
-.landing-container .choose { color: #18181c; background: #e5e5ea; border: 0; border-radius: 99px; }
-.landing-container .choose:hover { color: #fff; background: #242429; }
-.landing-container .catalog button:focus-visible { outline-color: #23232a; }
+.landing-container .service-card p { color: #dbeaff; }
+.landing-container .card-foot { border-color: #a6d6ff36; }
+.landing-container .card-foot strong { color: #f5f9ff; }
+.landing-container .time { border: 0; border-radius: 99px; background: #b1dfff30; color: #f0f7ff; font: 700 .77rem/1.3 var(--body); letter-spacing: 0; padding: 5px 10px; }
+.landing-container .choose { color: #102c52; background: #d4eaff; border: 0; border-radius: 99px; }
+.landing-container .choose:hover { color: #102c52; background: #fff; }
+.landing-container .catalog button:focus-visible { outline-color: #fff; }
 .landing-container .training-location { border-radius: 32px; }
 .pitfly-page .app-section h1,
 .pitfly-page .admin-panel h1,

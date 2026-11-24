@@ -44,14 +44,14 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
     if (!onSaveDetails || !query) return true
     const details = booking.booking_details
     const phone = details?.contact_phone || booking.profiles?.phone
-    return (phoneQuery && phone?.replace(/\D/g, '').includes(phoneQuery)) || [details?.dog_name, details?.dog_breed, details?.owner_name, details?.contact_phone,
+    return (phoneQuery && phone?.replace(/\D/g, '').includes(phoneQuery)) || [details?.dog_name, details?.dog_breed, details?.owner_name, details?.contact_phone, details?.city,
       booking.profiles?.email, booking.profiles?.phone, booking.services?.title]
       .some(value => value?.toLocaleLowerCase('ru').includes(query))
   }).sort(compareBookingStart)
 
   async function saveDetails(id: string) {
     if (!onSaveDetails || saving) return
-    const result = validateBookingDetails(draft)
+    const result = validateBookingDetails(draft, { requireCity: false })
     if ('error' in result) {
       setSaveError(result.error)
       return
@@ -73,7 +73,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
         {onSaveDetails && (
           <label className="booking-search">
             Поиск по записям
-            <input type="search" placeholder="Кличка, имя, телефон" value={search} onChange={event => setSearch(event.target.value)} />
+            <input type="search" placeholder="Кличка, имя, телефон, город" value={search} onChange={event => setSearch(event.target.value)} />
           </label>
         )}
       </div>
@@ -112,7 +112,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
                   {bookingDetailFields.map(({ name, label }) => (
                     <div key={name}>
                       <dt>{label}</dt>
-                      <dd>{name === 'contact_phone' ? <a href={`tel:${details[name].replace(/[^+\d]/g, '')}`}>{details[name]}</a> : details[name]}</dd>
+                      <dd>{name === 'contact_phone' ? <a href={`tel:${details[name].replace(/[^+\d]/g, '')}`}>{details[name]}</a> : details[name] || 'Не указан'}</dd>
                     </div>
                   ))}
                 </dl>
@@ -121,7 +121,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
               )}
               {editingId === booking.id ? (
                 <form className="directory-edit" onSubmit={event => { event.preventDefault(); void saveDetails(booking.id) }}>
-                  <BookingDetailsFields value={draft} onChange={setDraft} />
+                  <BookingDetailsFields value={draft} onChange={setDraft} requireCity={false} />
                   {saveError && <p className="field-error" role="alert">{saveError}</p>}
                   <div className="slot-actions">
                     <button className="button small" disabled={saving}>{saving ? 'Сохраняем…' : 'Сохранить'}</button>
@@ -132,7 +132,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
                 <div className="slot-actions">
                   {onSaveDetails && (
                     <button className="button secondary small" disabled={saving} onClick={() => {
-                      setDraft(details ? { ...details } : { ...emptyBookingDetails, contact_phone: phone || '' })
+                      setDraft(details ? { ...details, city: details.city ?? '' } : { ...emptyBookingDetails, contact_phone: phone || '' })
                       setSaveError('')
                       setEditingId(booking.id)
                     }}>{details ? 'Редактировать данные' : 'Добавить данные'}</button>

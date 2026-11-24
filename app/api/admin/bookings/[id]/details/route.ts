@@ -12,14 +12,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Запись не найдена' }, { status: 404 })
   }
 
-  const validation = validateBookingDetails(await request.json().catch(() => null))
+  const payload = await request.json().catch(() => null)
+  const validation = validateBookingDetails(payload, { requireCity: false })
   if ('error' in validation) {
     return NextResponse.json({ error: validation.error }, { status: 400 })
   }
 
+  const { city, ...contact } = validation.details
   const { data, error } = await supabase.rpc('update_pitfly_booking_details', {
     p_booking_id: id,
-    p_details: validation.details,
+    p_details: Object.hasOwn(payload, 'city') ? { ...contact, city } : contact,
   }).single()
 
   if (error?.message === 'not_trainer') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 })

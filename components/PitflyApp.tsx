@@ -67,7 +67,7 @@ export type Booking = {
   slots?: Slot | null
   profiles?: { email: string | null; phone: string | null } | null
   services?: Service | null
-  booking_details?: BookingDetails | null
+  booking_details?: (Omit<BookingDetails, 'city'> & { city?: string | null }) | null
 }
 
 type Profile = {
