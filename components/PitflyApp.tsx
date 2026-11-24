@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
+import { emptyBookingDetails, validateBookingDetails, type BookingDetails } from '@/lib/booking-details'
 import { getAuthErrorMessage, validateAuthCredentials } from '@/lib/auth-validation'
 import {
   addCalendarDays,
@@ -16,6 +17,9 @@ import {
   validateBulkScheduleInput,
 } from '@/lib/pitfly-time'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
+import { BookingDetailsFields } from './BookingDetailsFields'
+import { BookingDirectory } from './BookingDirectory'
+import { TrainingLanding, TrainingLocation } from './TrainingLanding'
 
 type Service = {
   id: number
@@ -50,7 +54,7 @@ type Subscription = {
   profiles?: { email: string | null; phone: string | null } | null
 }
 
-type Booking = {
+export type Booking = {
   id: string
   slot_id: string
   client_id: string
@@ -63,6 +67,7 @@ type Booking = {
   slots?: Slot | null
   profiles?: { email: string | null; phone: string | null } | null
   services?: Service | null
+  booking_details?: BookingDetails | null
 }
 
 type Profile = {
@@ -136,11 +141,14 @@ export function PitflyApp() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [allBookings, setAllBookings] = useState<Booking[]>([])
+  const [adminBookingsReady, setAdminBookingsReady] = useState(false)
   const [allSubscriptions, setAllSubscriptions] = useState<Subscription[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [selectedBookingDate, setSelectedBookingDate] = useState('all')
   const [useSubscription, setUseSubscription] = useState(false)
+  const [bookingDetails, setBookingDetails] = useState(emptyBookingDetails)
+  const [bookingError, setBookingError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [bulkWeekdays, setBulkWeekdays] = useState<number[]>([2])
@@ -150,6 +158,7 @@ export function PitflyApp() {
   const [bulkCapacity, setBulkCapacity] = useState(1)
   const [serviceFilter, setServiceFilter] = useState('all')
   const profileRefreshId = useRef(0)
+  const authGeneration = useRef(0)
 
   const loadCommonData = useCallback(async () => {
     if (sessionStorage.getItem('pitfly_dev_session') === DEV_TRAINER.email) {
@@ -234,6 +243,7 @@ export function PitflyApp() {
   }, [supabase])
 
   const loadClientData = useCallback(async (userId: string) => {
+    const generation = authGeneration.current
     const [subscriptionsResult, bookingsResult] = await Promise.all([
       supabase
         .from('subscriptions')
@@ -242,13 +252,14 @@ export function PitflyApp() {
         .order('expires_at', { ascending: false }),
       supabase
         .from('bookings')
-        .select('*, slots(*), services(*)')
+        .select('*, slots(*), services(*), booking_details(*)')
         .eq('client_id', userId)
         .order('created_at', { ascending: false }),
     ])
 
+    if (generation !== authGeneration.current) return
     if (subscriptionsResult.error || bookingsResult.error) {
-      setMessage('Не удалось загрузить данные кабинета. Проверьте RLS-политики Supabase.')
+      setMessage('Не удалось загрузить данные кабинета. Попробуйте обновить страницу.')
       return
     }
     setSubscriptions(subscriptionsResult.data as Subscription[])
@@ -256,10 +267,11 @@ export function PitflyApp() {
   }, [supabase])
 
   const loadAdminData = useCallback(async () => {
+    const generation = authGeneration.current
     const [bookingsResult, subscriptionsResult] = await Promise.all([
       supabase
         .from('bookings')
-        .select('*, slots(*), services(*), profiles(email, phone)')
+        .select('*, slots(*), services(*), profiles(email, phone), booking_details(*)')
         .order('created_at', { ascending: false }),
       supabase
         .from('subscriptions')
@@ -267,23 +279,28 @@ export function PitflyApp() {
         .order('expires_at', { ascending: false }),
     ])
 
+    if (generation !== authGeneration.current) return
+    setAdminBookingsReady(true)
     if (bookingsResult.error || subscriptionsResult.error) {
       setMessage('Не удалось загрузить данные админки. Проверьте роль тренера и RLS-политики Supabase.')
-      return
     }
-    setAllBookings(bookingsResult.data as unknown as Booking[])
-    setAllSubscriptions(subscriptionsResult.data as Subscription[])
+    if (!bookingsResult.error) setAllBookings(bookingsResult.data as unknown as Booking[])
+    if (!subscriptionsResult.error) setAllSubscriptions(subscriptionsResult.data as Subscription[])
   }, [supabase])
 
   const clearAuthState = useCallback(() => {
     profileRefreshId.current += 1
+    authGeneration.current += 1
     setAuthUser(null)
     setProfile(null)
     setIsAdmin(false)
     setBookings([])
     setSubscriptions([])
     setAllBookings([])
+    setAdminBookingsReady(false)
     setAllSubscriptions([])
+    setBookingDetails(emptyBookingDetails)
+    setBookingError('')
   }, [])
 
   const refreshProfile = useCallback(async (expectedUserId?: string): Promise<string | null> => {
@@ -490,10 +507,14 @@ export function PitflyApp() {
 
   useEffect(() => {
     if (isDevMode) return
-    if (isAdmin && tab === 'admin') {
+    if (isAdmin && (tab === 'admin' || tab === 'cabinet')) {
       void loadAdminData()
     }
   }, [isDevMode, isAdmin, tab, loadAdminData])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [tab])
 
   useEffect(() => {
     if (services.length && !services.some(service => service.code === selectedService)) {
@@ -649,6 +670,8 @@ export function PitflyApp() {
   }
 
   async function createBooking() {
+    if (loading) return
+    setBookingError('')
     if (!profile) {
       setMessage('Для записи войдите по email.')
       setTab('cabinet')
@@ -663,7 +686,13 @@ export function PitflyApp() {
       return
     }
     if (!isDevMode && unavailableServiceCodes.includes(selectedService)) {
-      setMessage(`Услуга ${selectedService} отсутствует в таблице services. Добавьте её в Supabase перед записью.`)
+      setBookingError('Эта услуга сейчас недоступна для онлайн-записи.')
+      return
+    }
+
+    const validation = validateBookingDetails(bookingDetails)
+    if ('error' in validation) {
+      setBookingError(validation.error)
       return
     }
 
@@ -721,6 +750,7 @@ export function PitflyApp() {
         slots: slot,
         profiles: { email: DEV_TRAINER.email, phone: DEV_TRAINER.phone },
         services: service,
+        booking_details: validation.details,
       }
       setBookings(prev => [devBooking, ...prev])
       setAllBookings(prev => [devBooking, ...prev])
@@ -747,37 +777,50 @@ export function PitflyApp() {
         : item))
       setLoading(false)
       setMessage(`Dev Mode: запись создана. Стоимость: ${useSubscription ? 'списано 1 занятие' : `${service.price} ₽`}.`)
+      setSelectedSlot('')
+      setBookingDetails(emptyBookingDetails)
+      setTab('cabinet')
       return
     }
 
     setMessage('')
-    const response = await fetch('/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        slotId: selectedSlot,
-        serviceCode: selectedService,
-        useSubscription: useSubscription && !selectedServiceDetails?.is_subscription,
-      }),
-    })
-    const payload = await response.json()
-    setLoading(false)
-
-    if (!response.ok) {
-      setMessage(payload.error || 'Не удалось создать запись.')
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slotId: selectedSlot,
+          serviceCode: selectedService,
+          useSubscription: useSubscription && !selectedServiceDetails?.is_subscription,
+          details: validation.details,
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        setBookingError(payload?.error || 'Не удалось создать запись.')
+        return
+      }
+    } catch {
+      setBookingError('Не удалось связаться с сервером. Проверьте кабинет перед повторной записью.')
       return
+    } finally {
+      setLoading(false)
     }
 
     setMessage(`Запись создана. Стоимость: ${useSubscription ? 'списано 1 занятие' : `${selectedServiceDetails?.price || 0} ₽`}.`)
+    setSelectedSlot('')
+    setBookingDetails(emptyBookingDetails)
+    setTab('cabinet')
     await loadCommonData()
     await loadClientData(profile.id)
   }
 
   async function cancelBooking(id: string) {
+    if (loading) return
     setLoading(true)
     if (isDevMode) {
-      const booking = bookings.find(item => item.id === id)
-      if (booking?.slots) {
+      const booking = (isAdmin ? allBookings : bookings).find(item => item.id === id)
+      if (!isAdmin && booking?.slots) {
         const hours = (new Date(booking.slots.starts_at).getTime() - Date.now()) / 3600000
         if (hours <= 5) {
           setLoading(false)
@@ -824,13 +867,21 @@ export function PitflyApp() {
       setMessage('Dev Mode: запись отменена.')
       return
     }
-    const response = await fetch(`/api/bookings/${id}/cancel`, { method: 'PATCH' })
-    const payload = await response.json()
-    setLoading(false)
-    setMessage(payload.error || 'Запись отменена.')
-    if (response.ok && profile) {
+    try {
+      const response = await fetch(`/api/bookings/${id}/cancel`, { method: 'PATCH' })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        setMessage(payload?.error || 'Не удалось отменить запись.')
+        return
+      }
+      setMessage('Запись отменена.')
       await loadCommonData()
-      await loadClientData(profile.id)
+      if (profile) await loadClientData(profile.id)
+      if (isAdmin) await loadAdminData()
+    } catch {
+      setMessage('Не удалось связаться с сервером. Проверьте статус записи в кабинете.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -981,16 +1032,50 @@ export function PitflyApp() {
   }
 
   async function markPaid(id: string) {
+    if (loading) return
     if (isDevMode) {
       setAllBookings(prev => prev.map(booking =>
         booking.id === id ? { ...booking, payment_status: 'paid' } : booking))
       setMessage('Dev Mode: оплата отмечена.')
       return
     }
-    const response = await fetch(`/api/admin/bookings/${id}/paid`, { method: 'PATCH' })
-    const payload = await response.json()
-    setMessage(payload.error || 'Оплата отмечена.')
-    if (response.ok) await loadAdminData()
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/admin/bookings/${id}/paid`, { method: 'PATCH' })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        setMessage(payload?.error || 'Не удалось отметить оплату.')
+        return
+      }
+      setMessage('Оплата отмечена.')
+      await loadAdminData()
+    } catch {
+      setMessage('Не удалось связаться с сервером. Проверьте статус оплаты в кабинете.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function saveBookingDetails(id: string, details: BookingDetails) {
+    const generation = authGeneration.current
+    if (!isDevMode) {
+      try {
+        const response = await fetch(`/api/admin/bookings/${id}/details`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(details),
+        })
+        const payload = await response.json()
+        if (!response.ok) return payload.error || 'Не удалось сохранить данные записи.'
+        details = payload.details
+      } catch {
+        return 'Не удалось связаться с сервером. Попробуйте ещё раз.'
+      }
+    }
+    if (generation !== authGeneration.current) return
+    const updateDetails = (booking: Booking) => booking.id === id ? { ...booking, booking_details: details } : booking
+    setAllBookings(items => items.map(updateDetails))
+    setBookings(items => items.map(updateDetails))
   }
 
   async function extendSubscription(id: string) {
@@ -1054,16 +1139,16 @@ export function PitflyApp() {
   return (
     <div className="pitfly-page">
       <header className="pitfly-header">
-        <div className="pitfly-brand">
-          <img src="/images/logo-chrome.png" alt="PITFLY" />
+        <button className="pitfly-brand" type="button" aria-label="PITFLY, главная" onClick={() => setTab('home')}>
+          <img src="/images/logo-chrome.png" alt="" />
           <strong>PITFLY</strong>
-        </div>
+        </button>
         <nav className="desktop-nav" aria-label="Основная навигация">
           <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>Главная</button>
           <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}>Запись</button>
           <button className={tab === 'cabinet' ? 'active' : ''} onClick={() => setTab('cabinet')}>Кабинет</button>
           {isAdmin && (
-            <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Админ</button>
+            <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Управление</button>
           )}
         </nav>
         <div className="header-account">
@@ -1076,31 +1161,17 @@ export function PitflyApp() {
       </header>
 
       <main>
-        {message && <div className="notice">{message}</div>}
-        {catalogWarning && <div className="notice notice-card">{catalogWarning}</div>}
+        {message && <div className="notice" role="status">{message}</div>}
+        {catalogWarning && tab === 'admin' && isAdmin && <div className="notice notice-card">{catalogWarning}</div>}
 
-        <div className="page-container">
+        <div className={`page-container${tab === 'home' ? ' landing-container' : ''}`}>
         {tab === 'home' && (
           <section className="home-screen">
-            <div className="hero">
-              <div className="hero-art" />
-              <div className="scan-corner" />
-              <div className="ruler" />
-              <div className="hero-body">
-                <div className="eyebrow"><i /> PITFLY / PERFORMANCE</div>
-                <h1>Физическая<br />подготовка собак</h1>
-                <p>Индивидуальные занятия под силу, выносливость и координацию конкретной собаки.</p>
-                <button className="hero-cta" onClick={() => setTab('book')}>Записаться на занятие <span>→</span></button>
-              </div>
-              <div className="hero-figure">PITFLY / 01</div>
-            </div>
+            <TrainingLanding onBook={() => setTab('book')} />
 
-            <div className="catalog">
+            <section className="catalog" id="services" data-reveal aria-labelledby="catalog-title">
               <div className="catalog-head">
-                <div>
-                  <div className="eyebrow"><i /> Услуги и направления</div>
-                  <h2>Прайс PITFLY</h2>
-                </div>
+                <h2 id="catalog-title">Услуги и цены</h2>
                 <div className="filters" aria-label="Фильтр услуг">
                   {[
                     ['all', 'Все'],
@@ -1112,6 +1183,7 @@ export function PitflyApp() {
                     <button
                       key={value}
                       className={serviceFilter === value ? 'selected' : ''}
+                      aria-pressed={serviceFilter === value}
                       onClick={() => setServiceFilter(value)}
                     >
                       {label}
@@ -1125,11 +1197,10 @@ export function PitflyApp() {
                   .filter(service => serviceFilter === 'all'
                     || (serviceFilter === 'subscription' && service.is_subscription)
                     || service.category === serviceFilter)
-                  .map((service, index) => (
+                  .map(service => (
                     <article className="service-card" key={service.code}>
                       <div className="card-meta">
-                        <span className="num">PF-{String(index + 1).padStart(2, '0')}</span>
-                        <span className="time">{service.duration_min} MIN</span>
+                        <span className="time">{service.duration_min === 720 ? 'Весь день' : service.is_subscription ? '5 занятий' : `${service.duration_min} мин`}</span>
                       </div>
                       <h3>{service.title}</h3>
                       <p>{service.category === 'rent'
@@ -1138,7 +1209,7 @@ export function PitflyApp() {
                           ? 'Контролируемая работа на беговой дорожке.'
                           : 'Индивидуальная физическая подготовка.'}</p>
                       <div className="card-foot">
-                        <strong>{service.price} ₽</strong>
+                        <strong>{formatRubles(service.price)}</strong>
                         <button
                           className="choose"
                           onClick={() => {
@@ -1152,15 +1223,9 @@ export function PitflyApp() {
                     </article>
                   ))}
               </div>
-            </div>
+            </section>
 
-            <div className="individual-card">
-              <div>
-                <div className="eyebrow"><i /> Индивидуальный подход</div>
-                <h2>Программа под конкретную собаку</h2>
-              </div>
-              <p>Возраст, порода, физическое состояние и цель определяют формат занятий.</p>
-            </div>
+            <TrainingLocation />
           </section>
         )}
 
@@ -1168,20 +1233,21 @@ export function PitflyApp() {
           <section className="app-section booking-page">
             <div className="section-heading">
               <div className="eyebrow"><i /> Онлайн-запись</div>
-              <h1>Выберите слот</h1>
+              <h1>Запись на тренировку</h1>
             </div>
             {!profile && (
               <div className="notice notice-card">
-                Для записи сначала войдите по email в личном кабинете.
+                <button className="button secondary small" type="button" onClick={() => setTab('cabinet')}>Войти в кабинет</button>
+                <span> Войдите, чтобы подтвердить запись.</span>
               </div>
             )}
-            <div className="booking-form">
+            <form className="booking-form" onSubmit={event => { event.preventDefault(); void createBooking() }}>
               <label>
                 Услуга
                 <select value={selectedService} onChange={event => setSelectedService(event.target.value)}>
                   {services.map(service => (
                     <option key={service.code} value={service.code}>
-                      {service.title} — {service.price} ₽{unavailableServiceCodes.includes(service.code) ? ' (нужно добавить в Supabase)' : ''}
+                      {service.title} — {service.price} ₽{unavailableServiceCodes.includes(service.code) ? ' (запись недоступна)' : ''}
                     </option>
                   ))}
                 </select>
@@ -1275,20 +1341,23 @@ export function PitflyApp() {
                   Списать занятие с абонемента
                 </label>
               )}
+              {selectedServiceDetails && !selectedServiceDetails.is_subscription && (
+                <BookingDetailsFields value={bookingDetails} onChange={setBookingDetails} />
+              )}
+              {bookingError && <p className="field-error" role="alert">{bookingError}</p>}
               <button
                 className="button"
                 disabled={loading || !selectedSlot || !selectedServiceDetails || selectedServiceDetails.is_subscription}
-                onClick={createBooking}
               >
                 {loading ? 'Запись...' : 'Подтвердить запись'}
               </button>
-            </div>
+            </form>
           </section>
         )}
 
         {tab === 'cabinet' && (
           <section className="app-section cabinet-page">
-            <h1>Личный кабинет</h1>
+            <h1>{isAdmin ? 'Кабинет тренера' : 'Личный кабинет'}</h1>
             {!profile ? (
               <div className="card">
                 <form onSubmit={event => {
@@ -1359,45 +1428,30 @@ export function PitflyApp() {
               </div>
             ) : (
               <>
-                <div className="cabinet-grid">
-                  <div className="card">
-                    <h2>{profile.email}</h2>
-                    <p className="muted">{profile.role === 'trainer' ? 'Тренер' : 'Клиент'}</p>
-                  </div>
-                  {activeSubscriptions.map(subscription => (
-                    <div className="card" key={subscription.id}>
-                      <h2>Абонемент</h2>
-                      <p>
-                        Осталось: {subscription.total_lessons - subscription.used_lessons} из {subscription.total_lessons}
-                      </p>
-                      <p className="muted">До {formatDate(subscription.expires_at)}</p>
-                    </div>
-                  ))}
-                  {bookings.map(booking => (
-                    <div className="card booking-row" key={booking.id}>
-                      <div>
-                        <h3>{booking.services?.title || booking.service_code}</h3>
-                        <p>{booking.slots ? formatDate(booking.slots.starts_at) : 'Время не указано'}</p>
-                        <p className="muted">
-                          {booking.status === 'active' ? 'Активна' : booking.status}
-                          {' · '}
-                          {booking.payment_status === 'paid' ? 'Оплачено' : 'Не оплачено'}
-                        </p>
-                      </div>
-                      {booking.status === 'active' && (
-                        <button className="button red small" disabled={loading} onClick={() => cancelBooking(booking.id)}>
-                          Отменить
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {!bookings.length && (
-                    <div className="card muted">Записей пока нет.</div>
-                  )}
-                  {!activeSubscriptions.length && (
-                    <div className="card muted">Активного абонемента нет.</div>
-                  )}
+                <div className="cabinet-account">
+                  <p>{profile.email}</p>
+                  {isAdmin && <button className="button secondary small" onClick={() => setTab('admin')}>Управление расписанием</button>}
                 </div>
+                {!isAdmin && activeSubscriptions.length > 0 && (
+                  <div className="cabinet-grid">
+                    {activeSubscriptions.map(subscription => (
+                      <div className="card" key={subscription.id}>
+                        <h2>Абонемент</h2>
+                        <p>Осталось занятий: {subscription.total_lessons - subscription.used_lessons} из {subscription.total_lessons}</p>
+                        <p className="muted">До {formatDate(subscription.expires_at)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <BookingDirectory
+                  key={profile.id}
+                  bookings={isAdmin ? allBookings : bookings}
+                  ready={!isAdmin || isDevMode || adminBookingsReady}
+                  busy={loading}
+                  onSaveDetails={isAdmin ? saveBookingDetails : undefined}
+                  onMarkPaid={isAdmin ? markPaid : undefined}
+                  onCancel={cancelBooking}
+                />
               </>
             )}
           </section>
@@ -1409,7 +1463,8 @@ export function PitflyApp() {
               <div className="card notice-card">Раздел доступен только профилям тренера.</div>
             ) : (
               <>
-                <h1>Админ PITFLY</h1>
+                <h1>Управление PITFLY</h1>
+                <button className="button secondary small" onClick={() => setTab('cabinet')}>К записям клиентов</button>
                 <div className="admin-dashboard" aria-label="Статистика тренера">
                   <article className="admin-stat-card">
                     <span className="admin-stat-label">Общий заработок</span>
@@ -1531,39 +1586,6 @@ export function PitflyApp() {
                   </div>
                 </div>
                 <section className="admin-table-section">
-                  <h2>Активные записи</h2>
-                  <div className="admin-table-wrap">
-                    <table className="admin-table">
-                      <thead>
-                        <tr><th>Клиент</th><th>Услуга</th><th>Дата и время</th><th>Оплата</th><th>Действие</th></tr>
-                      </thead>
-                      <tbody>
-                        {allBookings.filter(booking => booking.status === 'active').length ? (
-                          allBookings.filter(booking => booking.status === 'active').map(booking => (
-                            <tr key={booking.id}>
-                              <td>{booking.profiles?.email || booking.profiles?.phone || booking.client_id}</td>
-                              <td>{booking.services?.title || booking.service_code}</td>
-                              <td>{booking.slots ? formatDate(booking.slots.starts_at) : 'Время не указано'}</td>
-                              <td className={booking.payment_status === 'paid' ? 'status-paid' : 'muted'}>
-                                {booking.payment_status === 'paid' ? 'Оплачено' : 'Не оплачено'}
-                              </td>
-                              <td>
-                                {booking.payment_status !== 'paid' && (
-                                  <button className="button small" disabled={loading} onClick={() => markPaid(booking.id)}>
-                                    Отметить оплату
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr><td className="muted" colSpan={5}>Активных записей пока нет.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-                <section className="admin-table-section">
                   <h2>Абонементы</h2>
                   <div className="admin-table-wrap">
                     <table className="admin-table">
@@ -1638,7 +1660,7 @@ export function PitflyApp() {
         <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}>Запись</button>
         <button className={tab === 'cabinet' ? 'active' : ''} onClick={() => setTab('cabinet')}>Кабинет</button>
         {isAdmin && (
-          <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Админ</button>
+          <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Управление</button>
         )}
       </nav>
     </div>

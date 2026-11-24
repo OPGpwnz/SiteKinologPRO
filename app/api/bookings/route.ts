@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { validateBookingDetails } from '@/lib/booking-details'
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient()
@@ -9,7 +10,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Требуется вход' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'Некорректные данные записи' }, { status: 400 })
+  }
   const slotId = typeof body.slotId === 'string' ? body.slotId : ''
   const serviceCode = typeof body.serviceCode === 'string' ? body.serviceCode : ''
   const useSubscription = body.useSubscription === true
@@ -18,10 +22,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Не выбраны слот или услуга' }, { status: 400 })
   }
 
-  const { data, error } = await supabase.rpc('create_pitfly_booking', {
+  const validation = validateBookingDetails(body.details)
+  if ('error' in validation) {
+    return NextResponse.json({ error: validation.error }, { status: 400 })
+  }
+
+  const { data, error } = await supabase.rpc('create_pitfly_booking_with_details', {
     p_slot_id: slotId,
     p_service_code: serviceCode,
     p_use_subscription: useSubscription,
+    p_details: validation.details,
   })
 
   if (error) {
