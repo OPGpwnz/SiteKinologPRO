@@ -1,5 +1,30 @@
 begin;
 
+create function public.guard_pitfly_profile_role()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if current_user in ('anon', 'authenticated') then
+    if tg_op = 'INSERT' then
+      if new.role is distinct from 'client' then
+        raise exception 'profile_role_forbidden';
+      end if;
+    elsif new.role is distinct from old.role then
+      raise exception 'profile_role_forbidden';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.guard_pitfly_profile_role() from public, anon, authenticated;
+
+create trigger pitfly_guard_profile_role
+before insert or update of role on public.profiles
+for each row execute function public.guard_pitfly_profile_role();
+
 create table public.booking_details (
   booking_id uuid primary key references public.bookings(id) on delete cascade,
   dog_name text not null check (char_length(btrim(dog_name)) between 1 and 80),
