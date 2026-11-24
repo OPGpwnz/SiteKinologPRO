@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { bookingDetailFields, emptyBookingDetails, validateBookingDetails, type BookingDetails } from '@/lib/booking-details'
-import { formatBusinessDateTime } from '@/lib/pitfly-time'
+import { compareBookingStart, formatBusinessDateTime } from '@/lib/pitfly-time'
 import { BookingDetailsFields } from './BookingDetailsFields'
+import { TrainerAgenda } from './TrainerAgenda'
 import type { Booking } from './PitflyApp'
 
 const statuses = { active: 'Действует', cancelled: 'Отменена', completed: 'Завершена', no_show: 'Клиент не пришёл' }
@@ -22,9 +23,14 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
   const [draft, setDraft] = useState(emptyBookingDetails)
   const [saveError, setSaveError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [now, setNow] = useState(Date.now)
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   const grouped = { active: [] as Booking[], cancelled: [] as Booking[], history: [] as Booking[] }
-  const now = Date.now()
   for (const booking of bookings) {
     const ended = booking.slots && Date.parse(booking.slots.ends_at) <= now
     if (booking.status === 'cancelled') grouped.cancelled.push(booking)
@@ -41,12 +47,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
     return (phoneQuery && phone?.replace(/\D/g, '').includes(phoneQuery)) || [details?.dog_name, details?.dog_breed, details?.owner_name, details?.contact_phone,
       booking.profiles?.email, booking.profiles?.phone, booking.services?.title]
       .some(value => value?.toLocaleLowerCase('ru').includes(query))
-  }).sort((left, right) => {
-    const leftTime = left.slots?.starts_at
-    const rightTime = right.slots?.starts_at
-    if (!leftTime || !rightTime) return Number(Boolean(rightTime)) - Number(Boolean(leftTime))
-    return (Date.parse(leftTime) - Date.parse(rightTime)) * (group === 'active' ? 1 : -1)
-  })
+  }).sort(compareBookingStart)
 
   async function saveDetails(id: string) {
     if (!onSaveDetails || saving) return
@@ -66,6 +67,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
 
   return (
     <section className="booking-directory" aria-labelledby="booking-directory-title">
+      {onSaveDetails && <TrainerAgenda bookings={grouped.active} now={now} ready={ready} />}
       <div className="booking-directory-header">
         <h2 id="booking-directory-title">{onSaveDetails ? 'Записи клиентов' : 'Мои записи'}</h2>
         {onSaveDetails && (

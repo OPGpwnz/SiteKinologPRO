@@ -243,3 +243,44 @@ export function generateBulkScheduleSlots(input: BulkScheduleInput, now = new Da
 
   return slots
 }
+
+type ScheduledBooking = {
+  id: string
+  slot_id: string
+  pair_group_id: string | null
+  status: string
+  slots?: { starts_at: string; ends_at: string } | null
+}
+
+export function compareBookingStart(left: ScheduledBooking, right: ScheduledBooking) {
+  const leftTime = Date.parse(left.slots?.starts_at ?? '')
+  const rightTime = Date.parse(right.slots?.starts_at ?? '')
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return Number(Number.isNaN(leftTime)) - Number(Number.isNaN(rightTime))
+  }
+  return leftTime - rightTime
+}
+
+export function getTrainerAgenda<T extends ScheduledBooking>(bookings: T[], now: Date) {
+  const today = todayDateKey(now)
+  if (!today) return []
+
+  const days = [today, addCalendarDays(today, 1)].map(date => ({
+    date,
+    sessions: new Map<string, { id: string; startsAt: string; bookings: T[] }>(),
+  }))
+
+  for (const booking of [...bookings].sort(compareBookingStart)) {
+    if (booking.status !== 'active' || !booking.slots || !(Date.parse(booking.slots.ends_at) > now.getTime())) continue
+    const date = getDateKeyInBusinessTimeZone(booking.slots.starts_at)
+    const day = days.find(item => item.date === date)
+    if (!day) continue
+
+    const id = booking.pair_group_id ? `${booking.slot_id}:${booking.pair_group_id}` : booking.id
+    const session = day.sessions.get(id)
+    if (session) session.bookings.push(booking)
+    else day.sessions.set(id, { id, startsAt: booking.slots.starts_at, bookings: [booking] })
+  }
+
+  return days.map(({ date, sessions }) => ({ date, sessions: [...sessions.values()] }))
+}
