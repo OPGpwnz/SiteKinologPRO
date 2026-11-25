@@ -12,17 +12,17 @@ test('booking lists sort earliest first and keep undated rows after dated rows',
   assert.deepEqual([{ id: 'unknown', slots: null }, late, early].sort(compareBookingStart).map(item => item.id), ['early', 'late', 'unknown'])
 })
 
-test('trainer agenda uses Moscow dates and counts a paired session once', () => {
-  const now = new Date('2026-11-24T21:05:00Z')
+test('trainer agenda uses Perm dates and counts a paired session once', () => {
+  const now = new Date('2026-11-24T19:05:00Z')
   const pair = { slot_id: 'shared', pair_group_id: 'pair' }
   const bookings = [
-    booking('tomorrow', '2026-11-25T21:00:00Z', '2026-11-25T22:00:00Z'),
+    booking('tomorrow', '2026-11-25T19:00:00Z', '2026-11-25T20:00:00Z'),
     booking('pair-a', '2026-11-25T08:00:00Z', '2026-11-25T09:00:00Z', pair),
-    booking('ended', '2026-11-24T21:00:00Z', '2026-11-24T21:04:00Z'),
+    booking('ended', '2026-11-24T19:00:00Z', '2026-11-24T19:04:00Z'),
     booking('cancelled', '2026-11-25T09:00:00Z', '2026-11-25T10:00:00Z', { status: 'cancelled' }),
     booking('pair-b', '2026-11-25T08:00:00Z', '2026-11-25T09:00:00Z', pair),
     booking('first', '2026-11-25T07:00:00Z', '2026-11-25T08:00:00Z'),
-    booking('outside-period', '2026-11-26T21:00:00Z', '2026-11-26T22:00:00Z'),
+    booking('outside-period', '2026-11-26T19:00:00Z', '2026-11-26T20:00:00Z'),
   ]
 
   const days = getTrainerAgenda(bookings, now)

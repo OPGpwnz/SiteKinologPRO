@@ -14,18 +14,18 @@ import {
   validateAuthCredentials,
 } from '../lib/auth-validation.ts'
 
-test('Moscow wall-clock inputs round-trip without a UTC display shift', () => {
+test('Perm wall-clock inputs round-trip without a UTC display shift', () => {
   const startsAt = localDateTimeToIso('2026-01-15T09:00')
   const endsAt = localDateTimeToIso('2026-01-15T15:00')
 
-  assert.equal(startsAt, '2026-01-15T06:00:00.000Z')
-  assert.equal(endsAt, '2026-01-15T12:00:00.000Z')
+  assert.equal(startsAt, '2026-01-15T04:00:00.000Z')
+  assert.equal(endsAt, '2026-01-15T10:00:00.000Z')
   assert.equal(formatBusinessDateTime(startsAt, { hour: '2-digit', minute: '2-digit' }), '09:00')
   assert.equal(formatBusinessDateTime(endsAt, { hour: '2-digit', minute: '2-digit' }), '15:00')
 })
 
 test('business date keys, weekdays, and inclusive date arithmetic are timezone-stable', () => {
-  assert.equal(getDateKeyInBusinessTimeZone('2026-01-15T21:30:00.000Z'), '2026-01-16')
+  assert.equal(getDateKeyInBusinessTimeZone('2026-01-15T19:30:00.000Z'), '2026-01-16')
   assert.equal(weekdayForDateKey('2026-01-03'), 6)
   assert.equal(weekdayForDateKey('2026-01-04'), 0)
   assert.equal(addCalendarDays('2026-01-31', 1), '2026-02-01')
@@ -43,10 +43,10 @@ test('bulk schedule selects the requested weekdays and includes both date bounda
   const slots = generateBulkScheduleSlots(input, new Date('2026-01-01T00:00:00.000Z'))
 
   assert.deepEqual(slots.map(slot => slot.starts_at), [
-    '2026-01-03T06:00:00.000Z',
-    '2026-01-03T12:00:00.000Z',
-    '2026-01-04T06:00:00.000Z',
-    '2026-01-04T12:00:00.000Z',
+    '2026-01-03T04:00:00.000Z',
+    '2026-01-03T10:00:00.000Z',
+    '2026-01-04T04:00:00.000Z',
+    '2026-01-04T10:00:00.000Z',
   ])
   assert.ok(slots.every(slot => slot.capacity === 2 && slot.is_open))
   assert.ok(slots.every(slot =>
@@ -63,7 +63,7 @@ test('bulk schedule handles a one-day range and omits slots that have already st
     capacity: 1,
   }, new Date('2026-01-03T07:00:00.000Z'))
 
-  assert.deepEqual(slots.map(slot => slot.starts_at), ['2026-01-03T12:00:00.000Z'])
+  assert.deepEqual(slots.map(slot => slot.starts_at), ['2026-01-03T10:00:00.000Z'])
 })
 
 test('bulk schedule validation rejects reversed dates, invalid weekdays, and invalid hours', () => {

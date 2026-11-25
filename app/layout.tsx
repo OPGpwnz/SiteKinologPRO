@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from 'next'
 import { Manrope, Onest } from 'next/font/google'
 import './globals.css'
 import './pitfly-design.css'
+import './old-metal.css'
 import { Providers } from './providers'
 
 export const metadata: Metadata = { title: 'PITFLY — Физическая подготовка собак', description: 'Индивидуальные тренировки для собак. Услуги, расписание и онлайн-запись PITFLY.' }
-export const viewport: Viewport = {themeColor: '#0a0a0a'}
+export const viewport: Viewport = {themeColor: '#0e0e0e'}
 
 const onest = Onest({
   subsets: ['cyrillic', 'latin'],

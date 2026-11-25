@@ -11,6 +11,7 @@ import {
   formatBusinessDateTime,
   formatBusinessDateTab,
   generateBulkScheduleSlots,
+  BUSINESS_TIME_LABEL,
   getDateKeyInBusinessTimeZone,
   localDateTimeToIso,
   todayDateKey,
@@ -19,6 +20,9 @@ import {
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { BookingDetailsFields } from './BookingDetailsFields'
 import { BookingDirectory } from './BookingDirectory'
+import { TrainerContacts } from './TrainerContacts'
+import { arrangedWithTrainer } from '@/lib/booking-services'
+import { TrainerPasses, type PassClient } from './TrainerPasses'
 import { TrainingLanding, TrainingLocation } from './TrainingLanding'
 
 type Service = {
@@ -44,7 +48,7 @@ type Slot = {
   date_has_active_bookings?: boolean
 }
 
-type Subscription = {
+export type Subscription = {
   id: string
   client_id: string
   total_lessons: number
@@ -61,6 +65,7 @@ export type Booking = {
   service_code: string
   pair_group_id: string | null
   subscription_id?: string | null
+  payment_before_pass?: 'paid' | 'unpaid' | null
   status: 'active' | 'cancelled' | 'completed' | 'no_show'
   payment_status: 'unpaid' | 'paid'
   created_at: string
@@ -143,6 +148,7 @@ export function PitflyApp() {
   const [allBookings, setAllBookings] = useState<Booking[]>([])
   const [adminBookingsReady, setAdminBookingsReady] = useState(false)
   const [allSubscriptions, setAllSubscriptions] = useState<Subscription[]>([])
+  const [passClients, setPassClients] = useState<PassClient[]>([])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [selectedBookingDate, setSelectedBookingDate] = useState('all')
@@ -268,7 +274,7 @@ export function PitflyApp() {
 
   const loadAdminData = useCallback(async () => {
     const generation = authGeneration.current
-    const [bookingsResult, subscriptionsResult] = await Promise.all([
+    const [bookingsResult, subscriptionsResult, clientsResult] = await Promise.all([
       supabase
         .from('bookings')
         .select('*, slots(*), services(*), profiles(email, phone), booking_details(*)')
@@ -277,15 +283,17 @@ export function PitflyApp() {
         .from('subscriptions')
         .select('*, profiles(email, phone)')
         .order('expires_at', { ascending: false }),
+      supabase.from('profiles').select('id,email,phone').eq('role', 'client').order('email'),
     ])
 
     if (generation !== authGeneration.current) return
     setAdminBookingsReady(true)
-    if (bookingsResult.error || subscriptionsResult.error) {
+    if (bookingsResult.error || subscriptionsResult.error || clientsResult.error) {
       setMessage('Не удалось загрузить данные админки. Проверьте роль тренера и RLS-политики Supabase.')
     }
     if (!bookingsResult.error) setAllBookings(bookingsResult.data as unknown as Booking[])
     if (!subscriptionsResult.error) setAllSubscriptions(subscriptionsResult.data as Subscription[])
+    if (!clientsResult.error) setPassClients(clientsResult.data)
   }, [supabase])
 
   const clearAuthState = useCallback(() => {
@@ -299,6 +307,7 @@ export function PitflyApp() {
     setAllBookings([])
     setAdminBookingsReady(false)
     setAllSubscriptions([])
+    setPassClients([])
     setBookingDetails(emptyBookingDetails)
     setBookingError('')
   }, [])
@@ -446,6 +455,7 @@ export function PitflyApp() {
     setBookings([mockBooking])
     setAllSubscriptions([mockSubscription])
     setAllBookings([mockBooking])
+    setPassClients([DEV_TRAINER, { id: 'demo-new-client', email: 'Пример клиента без абонемента', phone: null }])
     setServices(FALLBACK_SERVICES)
     setUnavailableServiceCodes([])
     setCatalogWarning('')
@@ -517,8 +527,8 @@ export function PitflyApp() {
   }, [tab])
 
   useEffect(() => {
-    if (services.length && !services.some(service => service.code === selectedService)) {
-      setSelectedService(services[0].code)
+    if (!services.some(service => service.code === selectedService && !arrangedWithTrainer(service))) {
+      setSelectedService(services.find(service => !arrangedWithTrainer(service))?.code || '')
     }
   }, [services, selectedService])
 
@@ -681,8 +691,8 @@ export function PitflyApp() {
       setMessage('Выберите слот и услугу.')
       return
     }
-    if (selectedServiceDetails?.is_subscription) {
-      setMessage('Покупка абонемента через онлайн-запись пока не подключена. Свяжитесь с тренером.')
+    if (selectedServiceDetails && arrangedWithTrainer(selectedServiceDetails)) {
+      setMessage('Эта услуга оформляется лично с тренером.')
       return
     }
     if (!isDevMode && unavailableServiceCodes.includes(selectedService)) {
@@ -1078,6 +1088,68 @@ export function PitflyApp() {
     setBookings(items => items.map(updateDetails))
   }
 
+  async function refreshPasses(error: { message: string } | null) {
+    await loadAdminData()
+    if (error) {
+      const errors: Record<string, string> = {
+        not_trainer: 'Доступ есть только у тренера.',
+        linked_lessons: 'Этот остаток превышает доступный. Сначала верните нужное занятие в разовые.',
+        stale_balance: 'Запись уже изменилась. Проверьте обновлённые данные.',
+        pass_unavailable: 'В абонементе нет доступных занятий.',
+        active_pass_exists: 'У клиента уже есть действующий абонемент.',
+        lesson_unavailable: 'У этой записи нельзя изменить способ оплаты.',
+      }
+      throw new Error(errors[error.message] || 'Не удалось сохранить учёт абонемента. Проверьте подключение и миграцию базы.')
+    }
+  }
+
+  async function savePassBalance(clientId: string, pass: Subscription | undefined, remaining: number) {
+    const id = pass?.id ?? crypto.randomUUID()
+    if (!isDevMode) {
+      const { error } = await supabase.rpc('set_pitfly_pass_balance', {
+        p_client: clientId, p_pass: id, p_remaining: remaining, p_expected_used: pass?.used_lessons ?? null,
+      })
+      await refreshPasses(error)
+      return
+    }
+    const total = pass?.total_lessons ?? 5
+    if (pass && allBookings.filter(b => b.subscription_id === id && b.status !== 'cancelled').length > total - remaining) {
+      throw new Error('Сначала верните нужное занятие в разовые.')
+    }
+    const updated: Subscription = {
+      ...pass, id, client_id: clientId, total_lessons: total, used_lessons: total - remaining,
+      expires_at: pass?.expires_at ?? new Date(Date.now() + 45 * 86400000).toISOString(),
+      status: remaining ? 'active' : 'used_up',
+    }
+    const replace = (rows: Subscription[]) => [updated, ...rows.filter(row => row.id !== id)]
+    setAllSubscriptions(replace)
+    if (clientId === profile?.id) setSubscriptions(replace)
+  }
+
+  async function setLessonPass(booking: Booking, passId: string | null) {
+    if (!isDevMode) {
+      const { error } = await supabase.rpc('set_pitfly_lesson_pass', {
+        p_booking: booking.id, p_pass: passId, p_previous: booking.subscription_id ?? null,
+      })
+      await refreshPasses(error)
+      return
+    }
+    const id = passId ?? booking.subscription_id
+    const updateBalance = (rows: Subscription[]) => rows.map(pass => {
+      if (pass.id !== id) return pass
+      const used = Math.max(0, pass.used_lessons + (passId ? 1 : -1))
+      const status: Subscription['status'] = Date.parse(pass.expires_at) <= Date.now() ? 'expired' : used >= pass.total_lessons ? 'used_up' : 'active'
+      return { ...pass, used_lessons: used, status }
+    })
+    const updated: Booking = { ...booking, subscription_id: passId, payment_before_pass: passId ? booking.payment_status : null,
+      payment_status: passId ? 'paid' : booking.payment_before_pass ?? 'unpaid' }
+    const updateLesson = (rows: Booking[]) => rows.map(b => b.id === booking.id ? updated : b)
+    setAllBookings(updateLesson)
+    setBookings(updateLesson)
+    setAllSubscriptions(updateBalance)
+    setSubscriptions(updateBalance)
+  }
+
   async function extendSubscription(id: string) {
     if (isDevMode) {
       setAllSubscriptions(prev => prev.map(subscription =>
@@ -1118,7 +1190,7 @@ export function PitflyApp() {
     item => item.status === 'active' && new Date(item.expires_at) > new Date(),
   )
   const paidBookingRevenue = allBookings.reduce((total, booking) => {
-    if (booking.payment_status !== 'paid') return total
+    if (booking.payment_status !== 'paid' || booking.subscription_id) return total
     const servicePrice = booking.services?.price
       ?? services.find(service => service.code === booking.service_code)?.price
       ?? 0
@@ -1203,14 +1275,16 @@ export function PitflyApp() {
                         <span className="time">{service.duration_min === 720 ? 'Весь день' : service.is_subscription ? '5 занятий' : `${service.duration_min} мин`}</span>
                       </div>
                       <h3>{service.title}</h3>
-                      <p>{service.category === 'rent'
+                      <p>{arrangedWithTrainer(service) ? 'Условия и время занятия обсудите лично с тренером.' : service.category === 'rent'
                         ? 'Аренда площадки и оборудования.'
                         : service.category === 'treadmill'
                           ? 'Контролируемая работа на беговой дорожке.'
                           : 'Индивидуальная физическая подготовка.'}</p>
                       <div className="card-foot">
-                        <strong>{formatRubles(service.price)}</strong>
-                        <button
+                        <strong>{formatRubles(service.requires_pair || service.code === 'pair' ? 1000 : service.price)}
+                          {(service.requires_pair || service.code === 'pair') && <small className="pair-share">с каждого хозяина</small>}
+                        </strong>
+                        {arrangedWithTrainer(service) ? <TrainerContacts /> : <button
                           className="choose"
                           onClick={() => {
                             setSelectedService(service.code)
@@ -1218,7 +1292,7 @@ export function PitflyApp() {
                           }}
                         >
                           Выбрать <span>→</span>
-                        </button>
+                        </button>}
                       </div>
                     </article>
                   ))}
@@ -1245,7 +1319,7 @@ export function PitflyApp() {
               <label>
                 Услуга
                 <select value={selectedService} onChange={event => setSelectedService(event.target.value)}>
-                  {services.map(service => (
+                  {services.filter(service => !arrangedWithTrainer(service)).map(service => (
                     <option key={service.code} value={service.code}>
                       {service.title} — {service.price} ₽{unavailableServiceCodes.includes(service.code) ? ' (запись недоступна)' : ''}
                     </option>
@@ -1279,7 +1353,7 @@ export function PitflyApp() {
                 ))}
               </div>
               <div className="slot-heading">
-                <span>Доступное время</span>
+                <span>{BUSINESS_TIME_LABEL}</span>
                 <span>{visibleBookingSlots.length} {isFullDayService ? 'дней' : 'слотов'}</span>
               </div>
               <div className="slot-grid">
@@ -1443,6 +1517,8 @@ export function PitflyApp() {
                     ))}
                   </div>
                 )}
+                {isAdmin && <TrainerPasses clients={passClients} bookings={allBookings} passes={allSubscriptions}
+                  onBalance={savePassBalance} onLesson={setLessonPass} />}
                 <BookingDirectory
                   key={profile.id}
                   bookings={isAdmin ? allBookings : bookings}
@@ -1464,6 +1540,7 @@ export function PitflyApp() {
             ) : (
               <>
                 <h1>Управление PITFLY</h1>
+                <p className="muted">{BUSINESS_TIME_LABEL}</p>
                 <button className="button secondary small" onClick={() => setTab('cabinet')}>К записям клиентов</button>
                 <div className="admin-dashboard" aria-label="Статистика тренера">
                   <article className="admin-stat-card">

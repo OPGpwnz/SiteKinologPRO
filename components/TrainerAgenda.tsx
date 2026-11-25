@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatBusinessDateTab, formatBusinessDateTime, getTrainerAgenda } from '@/lib/pitfly-time'
+import { BUSINESS_TIME_LABEL, formatBusinessDateTab, formatBusinessDateTime, getTrainerAgenda } from '@/lib/pitfly-time'
 import type { Booking } from './PitflyApp'
 
 const periods = [
@@ -19,7 +19,7 @@ export function TrainerAgenda({ bookings, now, ready }: { bookings: Booking[]; n
       <div className="trainer-agenda-header">
         <div>
           <h2 id="trainer-agenda-title">Ближайшие занятия</h2>
-          <p>Московское время</p>
+          <p>{BUSINESS_TIME_LABEL}</p>
         </div>
         <div className="filters trainer-agenda-filters" role="group" aria-label="Период расписания">
           {periods.map(({ id, label }) => (

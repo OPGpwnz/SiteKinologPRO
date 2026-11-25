@@ -1,4 +1,5 @@
-export const BUSINESS_TIME_ZONE = 'Europe/Moscow'
+export const BUSINESS_TIME_ZONE = 'Asia/Yekaterinburg'
+export const BUSINESS_TIME_LABEL = 'Пермское время (UTC+5)'
 
 export type BulkScheduleInput = {
   startDate: string

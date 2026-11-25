@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { bookingDetailFields, emptyBookingDetails, validateBookingDetails, type BookingDetails } from '@/lib/booking-details'
-import { compareBookingStart, formatBusinessDateTime } from '@/lib/pitfly-time'
+import { BUSINESS_TIME_LABEL, compareBookingStart, formatBusinessDateTime } from '@/lib/pitfly-time'
 import { BookingDetailsFields } from './BookingDetailsFields'
 import { TrainerAgenda } from './TrainerAgenda'
 import type { Booking } from './PitflyApp'
@@ -77,6 +77,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
           </label>
         )}
       </div>
+      {!onSaveDetails && <p className="muted">{BUSINESS_TIME_LABEL}</p>}
       <div className="booking-directory-filters filters" role="group" aria-label="Статус записей">
         {(Object.keys(groups) as Group[]).map(key => (
           <button key={key} type="button" className={group === key ? 'selected' : ''} aria-pressed={group === key}
@@ -101,6 +102,7 @@ export function BookingDirectory({ bookings, onSaveDetails, onMarkPaid, onCancel
                   <h3>{booking.services?.title || 'Тренировка'}</h3>
                 </div>
                 <div className="booking-badges">
+                  <span className="booking-badge">{booking.subscription_id ? 'По абонементу' : 'Разовое занятие'}</span>
                   <span className="booking-badge" data-status={group === 'history' ? undefined : booking.status}>
                     {group === 'history' && booking.status === 'active' ? 'Дата прошла' : statuses[booking.status]}
                   </span>

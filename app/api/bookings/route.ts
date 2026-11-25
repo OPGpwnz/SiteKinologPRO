@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { validateBookingDetails } from '@/lib/booking-details'
+import { arrangedWithTrainer } from '@/lib/booking-services'
 
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient()
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
   const slotId = typeof body.slotId === 'string' ? body.slotId : ''
   const serviceCode = typeof body.serviceCode === 'string' ? body.serviceCode : ''
   const useSubscription = body.useSubscription === true
+  if (arrangedWithTrainer({ code: serviceCode })) {
+    return NextResponse.json({ error: 'Эта услуга оформляется лично с тренером.' }, { status: 409 })
+  }
 
   if (!slotId || !serviceCode) {
     return NextResponse.json({ error: 'Не выбраны слот или услуга' }, { status: 400 })
@@ -36,6 +40,7 @@ export async function POST(request: Request) {
 
   if (error) {
     const messages: Record<string, string> = {
+      contact_trainer: 'Эта услуга оформляется лично с тренером.',
       slot_unavailable: 'Слот недоступен',
       service_not_found: 'Услуга не найдена',
       slot_full: 'Свободных мест нет',
