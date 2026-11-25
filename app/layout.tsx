@@ -5,7 +5,12 @@ import './pitfly-design.css'
 import './old-metal.css'
 import { Providers } from './providers'
 
-export const metadata: Metadata = { title: 'PITFLY — Физическая подготовка собак', description: 'Индивидуальные тренировки для собак. Услуги, расписание и онлайн-запись PITFLY.' }
+export const metadata: Metadata = {
+  title: 'PITFLY — Физическая подготовка собак',
+  description: 'Индивидуальные тренировки для собак. Услуги, расписание и онлайн-запись PITFLY.',
+  icons: { apple: { url: '/icons/pitfly-180.png', sizes: '180x180', type: 'image/png' } },
+  appleWebApp: { capable: true, title: 'PITFLY' },
+}
 export const viewport: Viewport = {themeColor: '#0e0e0e'}
 
 const onest = Onest({

@@ -24,6 +24,7 @@ import { TrainerContacts } from './TrainerContacts'
 import { arrangedWithTrainer } from '@/lib/booking-services'
 import { TrainerPasses, type PassClient } from './TrainerPasses'
 import { TrainingLanding, TrainingLocation } from './TrainingLanding'
+import { InstallApp } from './InstallApp'
 
 type Service = {
   id: number
@@ -1237,6 +1238,7 @@ export function PitflyApp() {
         {catalogWarning && tab === 'admin' && isAdmin && <div className="notice notice-card">{catalogWarning}</div>}
 
         <div className={`page-container${tab === 'home' ? ' landing-container' : ''}`}>
+        <InstallApp visible={tab === 'home'} />
         {tab === 'home' && (
           <section className="home-screen">
             <TrainingLanding onBook={() => setTab('book')} />
